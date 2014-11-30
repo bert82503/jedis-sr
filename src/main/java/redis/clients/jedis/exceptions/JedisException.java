@@ -1,7 +1,7 @@
 package redis.clients.jedis.exceptions;
 
 /**
- * Redis运行时异常定义。
+ * "Jedis运行时异常"定义。
  */
 public class JedisException extends RuntimeException {
 
