@@ -13,16 +13,24 @@ import redis.clients.util.RedisInputStream;
 import redis.clients.util.RedisOutputStream;
 import redis.clients.util.SafeEncoder;
 
+/**
+ * "Redis协议"实现类。
+ */
 public final class Protocol {
 
     private static final String ASK_RESPONSE = "ASK";
     private static final String MOVED_RESPONSE = "MOVED";
     private static final String CLUSTERDOWN_RESPONSE = "CLUSTERDOWN";
+    /** 默认的Redis服务端口 */
     public static final int DEFAULT_PORT = 6379;
+    /** 默认的Sentinel服务端口 */
     public static final int DEFAULT_SENTINEL_PORT = 26379;
+    /** 默认的超时时间 */
     public static final int DEFAULT_TIMEOUT = 2000;
+    /** 默认的数据库索引 */
     public static final int DEFAULT_DATABASE = 0;
 
+    /** 编码 */
     public static final String CHARSET = "UTF-8";
 
     public static final byte DOLLAR_BYTE = '$';
@@ -31,16 +39,31 @@ public final class Protocol {
     public static final byte MINUS_BYTE = '-';
     public static final byte COLON_BYTE = ':';
 
+    /*
+     * 监控(Sentinel)服务
+     */
+    /** "主库(Master)"列表 */
     public static final String SENTINEL_MASTERS = "masters";
     public static final String SENTINEL_GET_MASTER_ADDR_BY_NAME = "get-master-addr-by-name";
+    /** 重置 */
     public static final String SENTINEL_RESET = "reset";
+    /** "从库(Slave)"列表 */
     public static final String SENTINEL_SLAVES = "slaves";
+    /** "故障转移"操作 */
     public static final String SENTINEL_FAILOVER = "failover";
+    /** "监视"操作 */
     public static final String SENTINEL_MONITOR = "monitor";
+    /** "移除主库"操作 */
     public static final String SENTINEL_REMOVE = "remove";
+    /** "将从库设置为主库"操作 */
     public static final String SENTINEL_SET = "set";
 
+    /*
+     * 集群(Cluster)服务
+     */
+    /** Redis节点列表 */
     public static final String CLUSTER_NODES = "nodes";
+    /** 心跳健康检测 */
     public static final String CLUSTER_MEET = "meet";
     public static final String CLUSTER_RESET = "reset";
     public static final String CLUSTER_ADDSLOTS = "addslots";
@@ -49,6 +72,7 @@ public final class Protocol {
     public static final String CLUSTER_GETKEYSINSLOT = "getkeysinslot";
     public static final String CLUSTER_SETSLOT = "setslot";
     public static final String CLUSTER_SETSLOT_NODE = "node";
+    /** 数据迁移 */
     public static final String CLUSTER_SETSLOT_MIGRATING = "migrating";
     public static final String CLUSTER_SETSLOT_IMPORTING = "importing";
     public static final String CLUSTER_SETSLOT_STABLE = "stable";
@@ -57,10 +81,17 @@ public final class Protocol {
     public static final String CLUSTER_KEYSLOT = "keyslot";
     public static final String CLUSTER_COUNTKEYINSLOT = "countkeysinslot";
     public static final String CLUSTER_SAVECONFIG = "saveconfig";
+    /** "复制"操作 */
     public static final String CLUSTER_REPLICATE = "replicate";
+    /** "从库"节点列表 */
     public static final String CLUSTER_SLAVES = "slaves";
+    /** "故障转移"操作 */
     public static final String CLUSTER_FAILOVER = "failover";
     public static final String CLUSTER_SLOTS = "slots";
+    
+    /*
+     * "发布/订阅"服务
+     */
     public static final String PUBSUB_CHANNELS= "channels";
     public static final String PUBSUB_NUMSUB = "numsub";
     public static final String PUBSUB_NUM_PAT = "numpat";
@@ -69,31 +100,42 @@ public final class Protocol {
 	// this prevent the class from instantiation
     }
 
-    public static void sendCommand(final RedisOutputStream os,
-	    final Command command, final byte[]... args) {
-	sendCommand(os, command.raw, args);
-    }
-
-    private static void sendCommand(final RedisOutputStream os,
-	    final byte[] command, final byte[]... args) {
-	try {
-	    os.write(ASTERISK_BYTE);
-	    os.writeIntCrLf(args.length + 1);
-	    os.write(DOLLAR_BYTE);
-	    os.writeIntCrLf(command.length);
-	    os.write(command);
-	    os.writeCrLf();
-
-	    for (final byte[] arg : args) {
-		os.write(DOLLAR_BYTE);
-		os.writeIntCrLf(arg.length);
-		os.write(arg);
-		os.writeCrLf();
-	    }
-	} catch (IOException e) {
-	    throw new JedisConnectionException(e);
+	/**
+	 * 发送Redis命令到服务端。
+	 *
+	 * @param os 输出流
+	 * @param command Redis命令
+	 * @param args 二进制格式的命令参数列表
+	 */
+	public static void sendCommand(final RedisOutputStream os,
+			final Command command, final byte[]... args) {
+		sendCommand(os, command.raw, args);
 	}
-    }
+
+	private static void sendCommand(final RedisOutputStream os,
+			final byte[] command, final byte[]... args) {
+		/*
+		 * 构造"Redis二进制协议"格式内容
+		 */
+		try {
+			os.write(ASTERISK_BYTE);
+			os.writeIntCrLf(args.length + 1);
+			os.write(DOLLAR_BYTE);
+			os.writeIntCrLf(command.length);
+			os.write(command);
+			os.writeCrLf();
+
+			for (final byte[] arg : args) {
+				os.write(DOLLAR_BYTE);
+				os.writeIntCrLf(arg.length);
+				os.write(arg);
+				os.writeCrLf();
+			}
+		} catch (IOException e) {
+			// 抛出"Redis连接异常"
+			throw new JedisConnectionException(e);
+		}
+	}
 
     private static void processError(final RedisInputStream is) {
 	String message = is.readLine();
