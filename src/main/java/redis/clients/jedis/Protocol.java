@@ -33,11 +33,12 @@ public final class Protocol {
     /** 编码 */
     public static final String CHARSET = "UTF-8";
 
+    /** 请求响应内容类型标识 */
     public static final byte DOLLAR_BYTE = '$';
-    public static final byte ASTERISK_BYTE = '*';
-    public static final byte PLUS_BYTE = '+';
-    public static final byte MINUS_BYTE = '-';
-    public static final byte COLON_BYTE = ':';
+    public static final byte ASTERISK_BYTE = '*';	// "批量操作对象列表"返回
+    public static final byte PLUS_BYTE = '+';		// 状态码
+    public static final byte MINUS_BYTE = '-';		// 出现错误
+    public static final byte COLON_BYTE = ':';		// "整型类型"返回
 
     /*
      * 监控(Sentinel)服务
@@ -137,58 +138,77 @@ public final class Protocol {
 		}
 	}
 
-    private static void processError(final RedisInputStream is) {
-	String message = is.readLine();
-	// TODO: I'm not sure if this is the best way to do this.
-	// Maybe Read only first 5 bytes instead?
-	if (message.startsWith(MOVED_RESPONSE)) {
-	    String[] movedInfo = parseTargetHostAndSlot(message);
-	    throw new JedisMovedDataException(message, new HostAndPort(
-		    movedInfo[1], Integer.valueOf(movedInfo[2])),
-		    Integer.valueOf(movedInfo[0]));
-	} else if (message.startsWith(ASK_RESPONSE)) {
-	    String[] askInfo = parseTargetHostAndSlot(message);
-	    throw new JedisAskDataException(message, new HostAndPort(
-		    askInfo[1], Integer.valueOf(askInfo[2])),
-		    Integer.valueOf(askInfo[0]));
-	} else if (message.startsWith(CLUSTERDOWN_RESPONSE)) {
-	    throw new JedisClusterException(message);
+	/**
+	 * 处理Redis集群重定向"请求错误"响应。
+	 *
+	 * @param is
+	 */
+	private static void processError(final RedisInputStream is) {
+		String message = is.readLine();
+		// TODO: I'm not sure if this is the best way to do this.
+		// Maybe Read only first 5 bytes instead?
+		if (message.startsWith(MOVED_RESPONSE)) {
+			String[] movedInfo = parseTargetHostAndSlot(message);
+			throw new JedisMovedDataException(message, new HostAndPort(
+					movedInfo[1], Integer.valueOf(movedInfo[2])),
+					Integer.valueOf(movedInfo[0]));
+		} else if (message.startsWith(ASK_RESPONSE)) {
+			String[] askInfo = parseTargetHostAndSlot(message);
+			throw new JedisAskDataException(message, new HostAndPort(
+					askInfo[1], Integer.valueOf(askInfo[2])),
+					Integer.valueOf(askInfo[0]));
+		} else if (message.startsWith(CLUSTERDOWN_RESPONSE)) {
+			throw new JedisClusterException(message);
+		}
+		throw new JedisDataException(message);
 	}
-	throw new JedisDataException(message);
-    }
 
+    /**
+     * 解析目标主机地址和槽索引。
+     *
+     * @param clusterRedirectResponse 集群重定向响应信息
+     * @return
+     */
     private static String[] parseTargetHostAndSlot(
-	    String clusterRedirectResponse) {
-	String[] response = new String[3];
-	String[] messageInfo = clusterRedirectResponse.split(" ");
-	String[] targetHostAndPort = messageInfo[2].split(":");
-	response[0] = messageInfo[1];
-	response[1] = targetHostAndPort[0];
-	response[2] = targetHostAndPort[1];
-	return response;
-    }
-
-    private static Object process(final RedisInputStream is) {
-	try {
-	    byte b = is.readByte();
-	    if (b == MINUS_BYTE) {
-		processError(is);
-	    } else if (b == ASTERISK_BYTE) {
-		return processMultiBulkReply(is);
-	    } else if (b == COLON_BYTE) {
-		return processInteger(is);
-	    } else if (b == DOLLAR_BYTE) {
-		return processBulkReply(is);
-	    } else if (b == PLUS_BYTE) {
-		return processStatusCodeReply(is);
-	    } else {
-		throw new JedisConnectionException("Unknown reply: " + (char) b);
-	    }
-	} catch (IOException e) {
-	    throw new JedisConnectionException(e);
+			String clusterRedirectResponse) {
+		String[] response = new String[3];
+		String[] messageInfo = clusterRedirectResponse.split(" ");
+		String[] targetHostAndPort = messageInfo[2].split(":");
+		response[0] = messageInfo[1];
+		response[1] = targetHostAndPort[0];
+		response[2] = targetHostAndPort[1];
+		return response;
 	}
-	return null;
-    }
+
+    /**
+     * 处理Redis服务器的响应信息。
+     *
+     * @param is
+     * @return
+     */
+	private static Object process(final RedisInputStream is) {
+		try {
+			byte b = is.readByte();
+			if (b == MINUS_BYTE) {
+				processError(is);
+			} else if (b == ASTERISK_BYTE) {
+				return processMultiBulkReply(is);
+			} else if (b == COLON_BYTE) {
+				return processInteger(is);
+			} else if (b == DOLLAR_BYTE) {
+				return processBulkReply(is);
+			} else if (b == PLUS_BYTE) {
+				return processStatusCodeReply(is);
+			} else {
+				throw new JedisConnectionException("Unknown reply: " + (char) b);
+			}
+		} catch (IOException e) {
+			// 抛出"Redis连接异常"
+			throw new JedisConnectionException(e);
+		}
+		// 可能返回 NULL
+		return null;
+	}
 
     private static byte[] processStatusCodeReply(final RedisInputStream is) {
 	return SafeEncoder.encode(is.readLine());
