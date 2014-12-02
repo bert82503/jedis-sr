@@ -5,10 +5,7 @@ package redis.clients.util;
  * 
  * @author huagang.li 2014年12月2日 下午7:37:10
  */
-public abstract class ShardInfo<T> {
-
-	/** 默认的分片权重(虚拟节点数) */
-	private static final int DEFAULT_WEIGHT = 40;
+public abstract class ShardInfo<R> {
 
 	/** 分片权重 */
 	private int weight;
@@ -17,7 +14,7 @@ public abstract class ShardInfo<T> {
 	 * 创建一个使用默认分片权重({@link #DEFAULT_WEIGHT})的"分片信息"实例。
 	 */
 	public ShardInfo() {
-		this.weight = DEFAULT_WEIGHT;
+		this.weight = Sharded.DEFAULT_WEIGHT;
 	}
 
 	/**
@@ -43,7 +40,7 @@ public abstract class ShardInfo<T> {
 	 * 
 	 * @return
 	 */
-	protected abstract T createResource();
+	protected abstract R createResource();
 
 	/**
 	 * 返回节点的分片名称。
