@@ -11,7 +11,7 @@ public abstract class ShardInfo<R> {
 	private int weight;
 
 	/**
-	 * 创建一个使用默认分片权重({@link #DEFAULT_WEIGHT})的"分片信息"实例。
+	 * 创建一个使用默认分片权重({@link Sharded#DEFAULT_WEIGHT})的"分片信息"实例。
 	 */
 	public ShardInfo() {
 		this.weight = Sharded.DEFAULT_WEIGHT;
@@ -27,15 +27,6 @@ public abstract class ShardInfo<R> {
 	}
 
 	/**
-	 * 返回该节点的分片权重。
-	 * 
-	 * @return
-	 */
-	public int getWeight() {
-		return this.weight;
-	}
-
-	/**
 	 * 创建一条新的连接资源。
 	 * 
 	 * @return
@@ -48,5 +39,14 @@ public abstract class ShardInfo<R> {
 	 * @return
 	 */
 	public abstract String getName();
+
+	/**
+	 * 返回该节点的分片权重。
+	 * 
+	 * @return
+	 */
+	public int getWeight() {
+		return this.weight;
+	}
 
 }

@@ -18,25 +18,20 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 	/** 端口号 */
 	private int port;
 
-	/** 节点名称 */
+	/** 节点的分片名称 */
 	private String name;
 
 	/** 访问密码 */
 	private String password;
 
-	/** 超时时间控制 */
+	/** 超时时间 */
 	private int timeout;
 
-	/**
-	 * 创建一个使用给定主机的"Redis节点分片信息"实例。
-	 * 
-	 * @param host
-	 */
 	public JedisShardInfo(String host) {
 		super(Sharded.DEFAULT_WEIGHT);
 
 		URI uri = URI.create(host);
-		if (uri.getScheme() != null && uri.getScheme().equals("redis")) { // 验证使用Redis协议
+		if (uri.getScheme() != null && uri.getScheme().equals("redis")) { // 验证使用"Redis协议"
 			this.host = uri.getHost();
 			this.port = uri.getPort();
 			this.password = uri.getUserInfo().split(":", 2)[1];
@@ -51,17 +46,29 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 	}
 
 	public JedisShardInfo(String host, int port) {
-		this(host, port, 2000);
+		this(host, port, Protocol.DEFAULT_TIMEOUT);
 	}
 
 	public JedisShardInfo(String host, int port, String name) {
-		this(host, port, 2000, name);
+		this(host, port, Protocol.DEFAULT_TIMEOUT, name);
 	}
 
 	public JedisShardInfo(String host, int port, int timeout) {
 		this(host, port, timeout, Sharded.DEFAULT_WEIGHT);
 	}
 
+	/**
+	 * 创建一个"Redis节点分片信息"实例。
+	 * 
+	 * @param host
+	 *            主机名称/IP
+	 * @param port
+	 *            端口号
+	 * @param timeout
+	 *            超时时间
+	 * @param name
+	 *            节点分片名称
+	 */
 	public JedisShardInfo(String host, int port, int timeout, String name) {
 		this(host, port, timeout, Sharded.DEFAULT_WEIGHT);
 		this.name = name;
@@ -82,6 +89,19 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 	}
 
 	/**
+	 * 创建一条新的连接到Redis链接。
+	 */
+	@Override
+	public Jedis createResource() {
+		return new Jedis(this);
+	}
+
+	@Override
+	public String getName() {
+		return name;
+	}
+
+	/**
 	 * <pre>
 	 * 返回格式：
 	 * 	主机IP:端口号:权重
@@ -92,10 +112,16 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 		return host + ":" + port + "*" + this.getWeight();
 	}
 
+	/**
+	 * 返回主机信息。
+	 */
 	public String getHost() {
 		return host;
 	}
 
+	/**
+	 * 返回端口号。
+	 */
 	public int getPort() {
 		return port;
 	}
@@ -104,6 +130,11 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 		return password;
 	}
 
+	/**
+	 * 设置访问密码。
+	 * 
+	 * @param auth
+	 */
 	public void setPassword(String auth) {
 		this.password = auth;
 	}
@@ -112,17 +143,13 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 		return timeout;
 	}
 
+	/**
+	 * 设置超时时间。
+	 * 
+	 * @param timeout
+	 */
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public Jedis createResource() {
-		return new Jedis(this);
 	}
 
 }
