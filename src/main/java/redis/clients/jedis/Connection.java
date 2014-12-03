@@ -196,6 +196,22 @@ public class Connection implements Closeable {
 		return socket;
 	}
 
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(final String host) {
+		this.host = host;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(final int port) {
+		this.port = port;
+	}
+
 	public int getTimeout() {
 		return timeout;
 	}
@@ -230,22 +246,21 @@ public class Connection implements Closeable {
 		}
 	}
 
-	public String getHost() {
-		return host;
+	/**
+	 * 刷新输出流。
+	 */
+	protected void flush() {
+		try {
+			outputStream.flush();
+		} catch (IOException ex) {
+			broken = true;
+			throw new JedisConnectionException(ex);
+		}
 	}
 
-	public void setHost(final String host) {
-		this.host = host;
-	}
-
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(final int port) {
-		this.port = port;
-	}
-
+	/**
+	 * 返回请求响应状态码。
+	 */
 	protected String getStatusCodeReply() {
 		flush();
 		pipelinedCommands--;
@@ -339,15 +354,6 @@ public class Connection implements Closeable {
 		return broken;
 	}
 
-	protected void flush() {
-		try {
-			outputStream.flush();
-		} catch (IOException ex) {
-			broken = true;
-			throw new JedisConnectionException(ex);
-		}
-	}
-
 	protected Object readProtocolWithCheckingBroken() {
 		try {
 			return Protocol.read(inputStream);
@@ -356,4 +362,5 @@ public class Connection implements Closeable {
 			throw exc;
 		}
 	}
+
 }
