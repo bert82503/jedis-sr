@@ -85,7 +85,7 @@ public class Connection implements Closeable {
 	 * </pre>
 	 */
 	public void connect() {
-		if (!isConnected()) {
+		if (!this.isConnected()) {
 			// 当前的链接套接字已被关闭，需要重新建立一条新的链接
 			try {
 				socket = new Socket();
@@ -126,7 +126,7 @@ public class Connection implements Closeable {
 		for (int i = 0; i < args.length; i++) {
 			bargs[i] = SafeEncoder.encode(args[i]);
 		}
-		return sendCommand(cmd, bargs);
+		return this.sendCommand(cmd, bargs);
 	}
 
 	/**
@@ -147,7 +147,7 @@ public class Connection implements Closeable {
 	 */
 	protected Connection sendCommand(final Command cmd, final byte[]... args) {
 		try {
-			connect();
+			this.connect();
 			Protocol.sendCommand(outputStream, cmd, args);
 			pipelinedCommands++;
 			return this;
@@ -162,19 +162,19 @@ public class Connection implements Closeable {
 	private static final byte[][] EMPTY_ARGS = new byte[0][];
 
 	protected Connection sendCommand(final Command cmd) {
-		return sendCommand(cmd, EMPTY_ARGS);
+		return this.sendCommand(cmd, EMPTY_ARGS);
 	}
 
 	@Override
 	public void close() {
-		disconnect();
+		this.disconnect();
 	}
 
 	/**
 	 * 断开到Redis服务器的连接。
 	 */
 	public void disconnect() {
-		if (isConnected()) {
+		if (this.isConnected()) {
 			// 按顺序依次关闭 输入流、输出流、套接字（释放资源）
 			try {
 				inputStream.close();
@@ -196,54 +196,15 @@ public class Connection implements Closeable {
 		return socket;
 	}
 
-	public String getHost() {
-		return host;
-	}
-
-	public void setHost(final String host) {
-		this.host = host;
-	}
-
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(final int port) {
-		this.port = port;
-	}
-
-	public int getTimeout() {
-		return timeout;
-	}
-
-	public void setTimeout(final int timeout) {
-		this.timeout = timeout;
-	}
-
 	/**
-	 * 设置链接永不断开。
+	 * 链接是否被阻塞了。
 	 */
-	public void setTimeoutInfinite() {
-		try {
-			if (!isConnected()) {
-				connect();
-			}
-			socket.setKeepAlive(true);
-			socket.setSoTimeout(0); // 0：表示链接永不超时
-		} catch (SocketException ex) {
-			broken = true;
-			throw new JedisConnectionException(ex);
-		}
+	public boolean isBroken() {
+		return broken;
 	}
 
-	public void rollbackTimeout() {
-		try {
-			socket.setSoTimeout(timeout);
-			socket.setKeepAlive(false);
-		} catch (SocketException ex) {
-			broken = true;
-			throw new JedisConnectionException(ex);
-		}
+	public void resetPipelinedCount() {
+		pipelinedCommands = 0;
 	}
 
 	/**
@@ -276,18 +237,21 @@ public class Connection implements Closeable {
 	 * 获取请求的响应状态码。
 	 */
 	protected String getStatusCodeReply() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		final byte[] resp = (byte[]) readProtocolWithCheckingBroken();
-		if (null == resp) {
-			return null;
-		} else {
+		final byte[] resp = (byte[]) this.readProtocolWithCheckingBroken();
+		if (null != resp) {
 			return SafeEncoder.encode(resp);
+		} else {
+			return null;
 		}
 	}
 
+	/**
+	 * 获取一条命令的"字符串"执行结果。
+	 */
 	public String getBulkReply() {
-		final byte[] result = getBinaryBulkReply();
+		final byte[] result = this.getBinaryBulkReply();
 		if (null != result) {
 			return SafeEncoder.encode(result);
 		} else {
@@ -295,62 +259,86 @@ public class Connection implements Closeable {
 		}
 	}
 
+	/**
+	 * 获取一条命令的"字节数组(二进制)"执行结果。
+	 */
 	public byte[] getBinaryBulkReply() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		return (byte[]) readProtocolWithCheckingBroken();
+		return (byte[]) this.readProtocolWithCheckingBroken();
 	}
 
+	/**
+	 * 获取一条命令的"长整型"执行结果。
+	 */
 	public Long getIntegerReply() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		return (Long) readProtocolWithCheckingBroken();
+		return (Long) this.readProtocolWithCheckingBroken();
 	}
 
+	/**
+	 * 获取一条批量命令的"字符串列表"执行结果。
+	 */
 	public List<String> getMultiBulkReply() {
-		return BuilderFactory.STRING_LIST.build(getBinaryMultiBulkReply());
+		return BuilderFactory.STRING_LIST.build(this.getBinaryMultiBulkReply());
 	}
 
+	/**
+	 * 获取一条批量命令的"字节数组列表"执行结果。
+	 */
 	@SuppressWarnings("unchecked")
 	public List<byte[]> getBinaryMultiBulkReply() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		return (List<byte[]>) readProtocolWithCheckingBroken();
+		return (List<byte[]>) this.readProtocolWithCheckingBroken();
 	}
 
-	public void resetPipelinedCount() {
-		pipelinedCommands = 0;
-	}
-
+	/**
+	 * 获取一条批量命令的"原始对象列表"执行结果。
+	 */
 	@SuppressWarnings("unchecked")
 	public List<Object> getRawObjectMultiBulkReply() {
-		return (List<Object>) readProtocolWithCheckingBroken();
+		return (List<Object>) this.readProtocolWithCheckingBroken();
 	}
 
+	/**
+	 * 获取一条批量命令的"对象列表"执行结果。
+	 */
 	public List<Object> getObjectMultiBulkReply() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		return getRawObjectMultiBulkReply();
+		return this.getRawObjectMultiBulkReply();
 	}
 
+	/**
+	 * 获取一条批量命令的"长整型列表"执行结果。
+	 */
 	@SuppressWarnings("unchecked")
 	public List<Long> getIntegerMultiBulkReply() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		return (List<Long>) readProtocolWithCheckingBroken();
+		return (List<Long>) this.readProtocolWithCheckingBroken();
 	}
 
+	/**
+	 * 获取所有命令的"对象列表"执行结果。
+	 */
 	public List<Object> getAll() {
-		return getAll(0);
+		return this.getAll(0);
 	}
 
+	/**
+	 * 获取若干条命令的"对象列表"执行结果。
+	 */
 	public List<Object> getAll(int except) {
 		List<Object> all = new ArrayList<Object>();
-		flush();
+		this.flush();
 		while (pipelinedCommands > except) {
 			try {
-				all.add(readProtocolWithCheckingBroken());
+				all.add(this.readProtocolWithCheckingBroken());
 			} catch (JedisDataException e) {
+				// Bug 为什么把异常信息对象加载到返回结果中，而不是设置为null？？？
 				all.add(e);
 			}
 			pipelinedCommands--;
@@ -358,14 +346,63 @@ public class Connection implements Closeable {
 		return all;
 	}
 
+	/**
+	 * 获取一条命令的"对象"执行结果。
+	 */
 	public Object getOne() {
-		flush();
+		this.flush();
 		pipelinedCommands--;
-		return readProtocolWithCheckingBroken();
+		return this.readProtocolWithCheckingBroken();
 	}
 
-	public boolean isBroken() {
-		return broken;
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(final String host) {
+		this.host = host;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(final int port) {
+		this.port = port;
+	}
+
+	public int getTimeout() {
+		return timeout;
+	}
+
+	public void setTimeout(final int timeout) {
+		this.timeout = timeout;
+	}
+
+	/**
+	 * 设置链接永不断开。
+	 */
+	public void setTimeoutInfinite() {
+		try {
+			if (!this.isConnected()) {
+				this.connect();
+			}
+			socket.setKeepAlive(true);
+			socket.setSoTimeout(0); // 0：表示链接永不超时
+		} catch (SocketException ex) {
+			broken = true;
+			throw new JedisConnectionException(ex);
+		}
+	}
+
+	public void rollbackTimeout() {
+		try {
+			socket.setSoTimeout(timeout);
+			socket.setKeepAlive(false);
+		} catch (SocketException ex) {
+			broken = true;
+			throw new JedisConnectionException(ex);
+		}
 	}
 
 }
