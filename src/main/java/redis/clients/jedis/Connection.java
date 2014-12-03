@@ -165,6 +165,30 @@ public class Connection implements Closeable {
 		return sendCommand(cmd, EMPTY_ARGS);
 	}
 
+	@Override
+	public void close() {
+		disconnect();
+	}
+
+	/**
+	 * 断开到Redis服务器的连接。
+	 */
+	public void disconnect() {
+		if (isConnected()) {
+			// 按顺序依次关闭 输入流、输出流、套接字（释放资源）
+			try {
+				inputStream.close();
+				outputStream.close();
+				if (!socket.isClosed()) {
+					socket.close();
+				}
+			} catch (IOException ex) {
+				broken = true;
+				throw new JedisConnectionException(ex);
+			}
+		}
+	}
+
 	/**
 	 * 返回链接套接字。
 	 */
@@ -220,26 +244,6 @@ public class Connection implements Closeable {
 
 	public void setPort(final int port) {
 		this.port = port;
-	}
-
-	@Override
-	public void close() {
-		disconnect();
-	}
-
-	public void disconnect() {
-		if (isConnected()) {
-			try {
-				inputStream.close();
-				outputStream.close();
-				if (!socket.isClosed()) {
-					socket.close();
-				}
-			} catch (IOException ex) {
-				broken = true;
-				throw new JedisConnectionException(ex);
-			}
-		}
 	}
 
 	protected String getStatusCodeReply() {
