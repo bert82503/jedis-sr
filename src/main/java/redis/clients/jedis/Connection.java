@@ -33,8 +33,9 @@ public class Connection implements Closeable {
 	private RedisOutputStream outputStream;
 	/** 输入流 */
 	private RedisInputStream inputStream;
-	/** 套接字存活保持时间 */
+	/** 套接字存活保持时间、连接超时时间、读取超时时间(ms) */
 	private int timeout = Protocol.DEFAULT_TIMEOUT;
+
 	/** 链接是否阻塞了 */
 	private boolean broken = false;
 	/** 已进入管道的命令计数器 */
@@ -72,6 +73,43 @@ public class Connection implements Closeable {
 		return socket != null && socket.isBound() && !socket.isClosed()
 				&& socket.isConnected() && !socket.isInputShutdown()
 				&& !socket.isOutputShutdown();
+	}
+
+	/**
+	 * 连接到Redis服务器。
+	 * 
+	 * <pre>
+	 * 分二步骤：
+	 * 	1. 若当前的链接套接字还打开着，则直接返回；
+	 * 	2. 否则，创建一条新的套接字链接。
+	 * </pre>
+	 */
+	public void connect() {
+		if (!isConnected()) {
+			// 当前的链接套接字已被关闭，需要重新建立一条新的链接
+			try {
+				socket = new Socket();
+				socket.setReuseAddress(true);
+				// Will monitor the TCP connection is valid (使用长连接技术)
+				socket.setKeepAlive(true);
+				// Socket buffer Whether closed, to ensure timely delivery of
+				// data (确保数据实时发送)
+				socket.setTcpNoDelay(true);
+				// Control calls close() method, the underlying socket is
+				// closed immediately (即使背后的套接字被瞬间关闭，也确保close()被调用)
+				socket.setSoLinger(true, 0);
+
+				// 创建一条新的连接到后端Redis服务器的链接
+				socket.connect(new InetSocketAddress(host, port), timeout);
+				socket.setSoTimeout(timeout);
+
+				outputStream = new RedisOutputStream(socket.getOutputStream());
+				inputStream = new RedisInputStream(socket.getInputStream());
+			} catch (IOException ex) {
+				broken = true;
+				throw new JedisConnectionException(ex);
+			}
+		}
 	}
 
 	/**
@@ -143,7 +181,7 @@ public class Connection implements Closeable {
 	}
 
 	/**
-	 * 设置链接不超时。
+	 * 设置链接永不断开。
 	 */
 	public void setTimeoutInfinite() {
 		try {
@@ -182,35 +220,6 @@ public class Connection implements Closeable {
 
 	public void setPort(final int port) {
 		this.port = port;
-	}
-
-	/**
-	 * 连接到Redis服务器。
-	 */
-	public void connect() {
-		if (!isConnected()) {
-			try {
-				socket = new Socket();
-				// ->@wjw_add
-				socket.setReuseAddress(true);
-				socket.setKeepAlive(true); // Will monitor the TCP connection is
-				// valid
-				socket.setTcpNoDelay(true); // Socket buffer Whetherclosed, to
-				// ensure timely delivery of data
-				socket.setSoLinger(true, 0); // Control calls close () method,
-				// the underlying socket is closed
-				// immediately
-				// <-@wjw_add
-
-				socket.connect(new InetSocketAddress(host, port), timeout);
-				socket.setSoTimeout(timeout);
-				outputStream = new RedisOutputStream(socket.getOutputStream());
-				inputStream = new RedisInputStream(socket.getInputStream());
-			} catch (IOException ex) {
-				broken = true;
-				throw new JedisConnectionException(ex);
-			}
-		}
 	}
 
 	@Override
