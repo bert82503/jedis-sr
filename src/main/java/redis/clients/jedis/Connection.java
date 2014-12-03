@@ -135,7 +135,7 @@ public class Connection implements Closeable {
 	 * <pre>
 	 * 分三步骤：
 	 * 	1. 连接到Redis服务器；
-	 * 	2. 发送命令；
+	 * 	2. 发送命令（基于{@link Protocol#sendCommand(RedisOutputStream, Command, byte[]...)}实现）；
 	 * 	3. 进入管道的命令计数器加1。
 	 * </pre>
 	 * 
@@ -259,7 +259,21 @@ public class Connection implements Closeable {
 	}
 
 	/**
-	 * 返回请求响应状态码。
+	 * 读取命令执行的响应信息。
+	 * <p>
+	 * 基于{@link Protocol#read(RedisInputStream)}实现
+	 */
+	protected Object readProtocolWithCheckingBroken() {
+		try {
+			return Protocol.read(inputStream);
+		} catch (JedisConnectionException exc) {
+			broken = true;
+			throw exc;
+		}
+	}
+
+	/**
+	 * 获取请求的响应状态码。
 	 */
 	protected String getStatusCodeReply() {
 		flush();
@@ -352,15 +366,6 @@ public class Connection implements Closeable {
 
 	public boolean isBroken() {
 		return broken;
-	}
-
-	protected Object readProtocolWithCheckingBroken() {
-		try {
-			return Protocol.read(inputStream);
-		} catch (JedisConnectionException exc) {
-			broken = true;
-			throw exc;
-		}
 	}
 
 }
