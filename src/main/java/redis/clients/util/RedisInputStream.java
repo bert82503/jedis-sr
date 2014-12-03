@@ -22,91 +22,143 @@ import java.io.InputStream;
 
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
+/**
+ * 非同步的Redis缓冲过滤输入流。
+ * 
+ * @author huagang.li 2014年12月3日 上午11:00:16
+ */
 public class RedisInputStream extends FilterInputStream {
 
-    protected final byte buf[];
+	/** 文件末尾标记(End of File) */
+	private static final int EOF = -1;
 
-    protected int count, limit;
+	/** 缓冲区 */
+	protected final byte buf[];
 
-    public RedisInputStream(InputStream in, int size) {
-	super(in);
-	if (size <= 0) {
-	    throw new IllegalArgumentException("Buffer size <= 0");
-	}
-	buf = new byte[size];
-    }
+	/** 内容读取位置 */
+	protected int count;
 
-    public RedisInputStream(InputStream in) {
-	this(in, 8192);
-    }
+	/** 缓冲区内容的实际有效长度 */
+	protected int limit;
 
-    public byte readByte() throws IOException {
-	if (count == limit) {
-	    fill();
-	}
-
-	return buf[count++];
-    }
-
-    public String readLine() {
-	int b;
-	byte c;
-	StringBuilder sb = new StringBuilder();
-
-	try {
-	    while (true) {
-		if (count == limit) {
-		    fill();
+	/**
+	 * 创建一个给定缓冲区大小的Redis过滤输入流。
+	 * 
+	 * @param in
+	 *            输入流
+	 * @param bufferSize
+	 *            缓冲区大小
+	 */
+	public RedisInputStream(InputStream in, int bufferSize) {
+		super(in);
+		if (bufferSize <= 0) {
+			throw new IllegalArgumentException("Buffer size <= 0");
 		}
-		if (limit == -1)
-		    break;
+		buf = new byte[bufferSize];
+	}
 
-		b = buf[count++];
-		if (b == '\r') {
-		    if (count == limit) {
+	/**
+	 * 创建一个具有8KB大小缓冲区的Redis过滤输入流。
+	 * 
+	 * @param in
+	 *            输入流
+	 */
+	public RedisInputStream(InputStream in) {
+		this(in, 8192); // 8KB
+	}
+
+	/**
+	 * 读取一个字节内容。
+	 * 
+	 * @return
+	 * @throws IOException
+	 */
+	public byte readByte() throws IOException {
+		if (count == limit) { // 缓冲区的内容已被读完，得重新加载新的数据
 			fill();
-		    }
-
-		    if (limit == -1) {
-			sb.append((char) b);
-			break;
-		    }
-
-		    c = buf[count++];
-		    if (c == '\n') {
-			break;
-		    }
-		    sb.append((char) b);
-		    sb.append((char) c);
-		} else {
-		    sb.append((char) b);
 		}
-	    }
-	} catch (IOException e) {
-	    throw new JedisConnectionException(e);
-	}
-	String reply = sb.toString();
-	if (reply.length() == 0) {
-	    throw new JedisConnectionException(
-		    "It seems like server has closed the connection.");
-	}
-	return reply;
-    }
 
-    public int read(byte[] b, int off, int len) throws IOException {
-	if (count == limit) {
-	    fill();
-	    if (limit == -1)
-		return -1;
+		return buf[count++];
 	}
-	final int length = Math.min(limit - count, len);
-	System.arraycopy(buf, count, b, off, length);
-	count += length;
-	return length;
-    }
 
-    private void fill() throws IOException {
-	limit = in.read(buf);
-	count = 0;
-    }
+	/**
+	 * 读取一行内容。
+	 * 
+	 * @return 一行数据，或抛出"Jedis连接运行时异常"定义
+	 */
+	public String readLine() {
+		int b;
+		byte c;
+		StringBuilder sb = new StringBuilder(); // 保存一行内容
+
+		try {
+			while (true) {
+				if (count == limit) { // 缓冲区的内容已被读完，得重新加载新的数据
+					fill();
+				}
+				if (limit == EOF) { // 没有数据了
+					break;
+				}
+
+				b = buf[count++];
+				if (b == '\r') {
+					if (count == limit) { // 缓冲区的内容正好被读完，得重新加载新的数据
+						fill();
+					}
+
+					if (limit == EOF) { // 没有数据了
+						sb.append((char) b);
+						break;
+					}
+					// 继续处理
+					c = buf[count++];
+					if (c == '\n') { // 忽略换行符（'\r\n'）
+						break;
+					}
+					sb.append((char) b);
+					sb.append((char) c);
+				} else {
+					sb.append((char) b);
+				}
+			}
+		} catch (IOException e) {
+			// 读取一行内容出现异常
+			throw new JedisConnectionException(e);
+		}
+		String reply = sb.toString();
+		if (reply.isEmpty()) {
+			// 服务端已关闭该连接
+			throw new JedisConnectionException(
+					"It seems like server has closed the connection.");
+		}
+		return reply;
+	}
+
+	/**
+	 * 从输入流读取给定长度的字节数组数据。
+	 * <p>
+	 * {@inheritDoc}
+	 */
+	@Override
+	public int read(byte[] b, int off, int len) throws IOException {
+		if (count == limit) { // 缓冲区的内容已被读完，得重新加载新的数据
+			fill();
+			if (limit == EOF) {
+				return -1;
+			}
+		}
+		final int length = Math.min(limit - count, len);
+		System.arraycopy(buf, count, b, off, length);
+		count += length;
+		return length;
+	}
+
+	/*
+	 * 读取输入流内容，并保存到缓冲区里。
+	 */
+	private void fill() throws IOException {
+		this.limit = in.read(buf);
+		this.count = 0;
+	}
+
 }
