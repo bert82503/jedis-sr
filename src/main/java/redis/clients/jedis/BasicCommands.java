@@ -1,44 +1,56 @@
 package redis.clients.jedis;
 
+/**
+ * "Redis基本命令集"定义。
+ * 
+ * @author huagang.li 2014年12月3日 下午4:48:39
+ */
 public interface BasicCommands {
 
-    String ping();
+	/*
+	 * Connection（连接）
+	 */
+	String auth(String password);
 
-    String quit();
+	String ping();
 
-    String flushDB();
+	String quit();
 
-    Long dbSize();
+	String select(int index);
 
-    String select(int index);
+	/*
+	 * Server（服务器）
+	 */
+	String flushDB();
 
-    String flushAll();
+	Long dbSize();
 
-    String auth(String password);
+	String flushAll();
 
-    String save();
+	String save();
 
-    String bgsave();
+	String bgsave();
 
-    String bgrewriteaof();
+	String bgrewriteaof();
 
-    Long lastsave();
+	Long lastsave();
 
-    String shutdown();
+	String shutdown();
 
-    String info();
+	String info();
 
-    String info(String section);
+	String info(String section);
 
-    String slaveof(String host, int port);
+	String slaveof(String host, int port);
 
-    String slaveofNoOne();
+	String slaveofNoOne();
 
-    Long getDB();
+	Long getDB();
 
-    String debug(DebugParams params);
+	String debug(DebugParams params);
 
-    String configResetStat();
+	String configResetStat();
 
-    Long waitReplicas(int replicas, long timeout);
+	Long waitReplicas(int replicas, long timeout);
+
 }
