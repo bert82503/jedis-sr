@@ -40,6 +40,9 @@ public class Connection implements Closeable {
 	/** 已进入管道的命令计数器 */
 	private int pipelinedCommands = 0;
 
+	public Connection() {
+	}
+
 	/**
 	 * 创建一条新的Redis链接。
 	 * 
@@ -47,6 +50,81 @@ public class Connection implements Closeable {
 	 */
 	public Connection(final String host) {
 		this.host = host;
+	}
+
+	/**
+	 * 创建一条新的Redis链接。
+	 * 
+	 * @param host
+	 * @param port
+	 */
+	public Connection(final String host, final int port) {
+		this.host = host;
+		this.port = port;
+	}
+
+	/**
+	 * 检测套接字链接是否还连接着。
+	 * 
+	 * @return
+	 */
+	public boolean isConnected() {
+		return socket != null && socket.isBound() && !socket.isClosed()
+				&& socket.isConnected() && !socket.isInputShutdown()
+				&& !socket.isOutputShutdown();
+	}
+
+	/**
+	 * 发送一条命令到Redis服务器端。
+	 * 
+	 * @param cmd
+	 *            Redis命令
+	 * @param args
+	 *            参数列表
+	 * @return
+	 */
+	protected Connection sendCommand(final Command cmd, final String... args) {
+		final byte[][] bargs = new byte[args.length][];
+		for (int i = 0; i < args.length; i++) {
+			bargs[i] = SafeEncoder.encode(args[i]);
+		}
+		return sendCommand(cmd, bargs);
+	}
+
+	/**
+	 * 发送一条命令到Redis服务器端。
+	 * 
+	 * <pre>
+	 * 分三步骤：
+	 * 	1. 连接到Redis服务器；
+	 * 	2. 发送命令；
+	 * 	3. 进入管道的命令计数器加1。
+	 * </pre>
+	 * 
+	 * @param cmd
+	 *            Redis命令
+	 * @param args
+	 *            参数列表
+	 * @return
+	 */
+	protected Connection sendCommand(final Command cmd, final byte[]... args) {
+		try {
+			connect();
+			Protocol.sendCommand(outputStream, cmd, args);
+			pipelinedCommands++;
+			return this;
+		} catch (JedisConnectionException ex) {
+			// Any other exceptions related to connection?
+			broken = true;
+			throw ex;
+		}
+	}
+
+	/** 空参数列表 */
+	private static final byte[][] EMPTY_ARGS = new byte[0][];
+
+	protected Connection sendCommand(final Command cmd) {
+		return sendCommand(cmd, EMPTY_ARGS);
 	}
 
 	/**
@@ -90,71 +168,6 @@ public class Connection implements Closeable {
 		}
 	}
 
-	/**
-	 * 发送一条命令到Redis服务器端。
-	 * 
-	 * @param cmd
-	 *            Redis命令
-	 * @param args
-	 *            参数列表
-	 * @return
-	 */
-	protected Connection sendCommand(final Command cmd, final String... args) {
-		final byte[][] bargs = new byte[args.length][];
-		for (int i = 0; i < args.length; i++) {
-			bargs[i] = SafeEncoder.encode(args[i]);
-		}
-		return sendCommand(cmd, bargs);
-	}
-
-	/**
-	 * 发送一条命令到Redis服务器端。
-	 * 
-	 * <pre>
-	 * 分三步骤：
-	 * 	1. 连接到服务器；
-	 * 	2. 发送命令；
-	 * 	3. 进入管道的命令计数器加1。
-	 * </pre>
-	 * 
-	 * @param cmd
-	 *            Redis命令
-	 * @param args
-	 *            参数列表
-	 * @return
-	 */
-	protected Connection sendCommand(final Command cmd, final byte[]... args) {
-		try {
-			connect();
-			Protocol.sendCommand(outputStream, cmd, args);
-			pipelinedCommands++;
-			return this;
-		} catch (JedisConnectionException ex) {
-			// Any other exceptions related to connection?
-			broken = true;
-			throw ex;
-		}
-	}
-
-	protected Connection sendCommand(final Command cmd) {
-		try {
-			connect();
-			Protocol.sendCommand(outputStream, cmd, new byte[0][]);
-			pipelinedCommands++;
-			return this;
-		} catch (JedisConnectionException ex) {
-			// Any other exceptions related to connection?
-			broken = true;
-			throw ex;
-		}
-	}
-
-	public Connection(final String host, final int port) {
-		super();
-		this.host = host;
-		this.port = port;
-	}
-
 	public String getHost() {
 		return host;
 	}
@@ -171,10 +184,9 @@ public class Connection implements Closeable {
 		this.port = port;
 	}
 
-	public Connection() {
-
-	}
-
+	/**
+	 * 连接到Redis服务器。
+	 */
 	public void connect() {
 		if (!isConnected()) {
 			try {
@@ -219,12 +231,6 @@ public class Connection implements Closeable {
 				throw new JedisConnectionException(ex);
 			}
 		}
-	}
-
-	public boolean isConnected() {
-		return socket != null && socket.isBound() && !socket.isClosed()
-				&& socket.isConnected() && !socket.isInputShutdown()
-				&& !socket.isOutputShutdown();
 	}
 
 	protected String getStatusCodeReply() {
