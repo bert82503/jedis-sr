@@ -165,6 +165,9 @@ public class Connection implements Closeable {
 		return this.sendCommand(cmd, EMPTY_ARGS);
 	}
 
+	/**
+	 * 关闭到Redis服务器的连接。
+	 */
 	@Override
 	public void close() {
 		this.disconnect();

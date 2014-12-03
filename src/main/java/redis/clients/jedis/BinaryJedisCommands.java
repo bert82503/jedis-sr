@@ -36,8 +36,21 @@ public interface BinaryJedisCommands {
 	/*
 	 * String（字符串）
 	 */
+	/**
+	 * SET 命令
+	 * 
+	 * @param key
+	 * @param value
+	 * @return
+	 */
 	String set(byte[] key, byte[] value);
 
+	/**
+	 * GET 命令
+	 * 
+	 * @param key
+	 * @return
+	 */
 	byte[] get(byte[] key);
 
 	Boolean setbit(byte[] key, long offset, boolean value);

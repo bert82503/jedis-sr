@@ -3,74 +3,87 @@ package redis.clients.jedis;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 涉及多个键的二进制数据格式的"Redis命令集"定义。
+ * 
+ * @author huagang.li 2014年12月3日 下午5:05:30
+ */
 public interface MultiKeyBinaryCommands {
-    Long del(byte[]... keys);
 
-    List<byte[]> blpop(int timeout, byte[]... keys);
+	/**
+	 * DEL 命令
+	 * 
+	 * @param keys
+	 * @return
+	 */
+	Long del(byte[]... keys);
 
-    List<byte[]> brpop(int timeout, byte[]... keys);
+	List<byte[]> blpop(int timeout, byte[]... keys);
 
-    List<byte[]> blpop(byte[]... args);
+	List<byte[]> brpop(int timeout, byte[]... keys);
 
-    List<byte[]> brpop(byte[]... args);
+	List<byte[]> blpop(byte[]... args);
 
-    Set<byte[]> keys(byte[] pattern);
+	List<byte[]> brpop(byte[]... args);
 
-    List<byte[]> mget(byte[]... keys);
+	Set<byte[]> keys(byte[] pattern);
 
-    String mset(byte[]... keysvalues);
+	List<byte[]> mget(byte[]... keys);
 
-    Long msetnx(byte[]... keysvalues);
+	String mset(byte[]... keysvalues);
 
-    String rename(byte[] oldkey, byte[] newkey);
+	Long msetnx(byte[]... keysvalues);
 
-    Long renamenx(byte[] oldkey, byte[] newkey);
+	String rename(byte[] oldkey, byte[] newkey);
 
-    byte[] rpoplpush(byte[] srckey, byte[] dstkey);
+	Long renamenx(byte[] oldkey, byte[] newkey);
 
-    Set<byte[]> sdiff(byte[]... keys);
+	byte[] rpoplpush(byte[] srckey, byte[] dstkey);
 
-    Long sdiffstore(byte[] dstkey, byte[]... keys);
+	Set<byte[]> sdiff(byte[]... keys);
 
-    Set<byte[]> sinter(byte[]... keys);
+	Long sdiffstore(byte[] dstkey, byte[]... keys);
 
-    Long sinterstore(byte[] dstkey, byte[]... keys);
+	Set<byte[]> sinter(byte[]... keys);
 
-    Long smove(byte[] srckey, byte[] dstkey, byte[] member);
+	Long sinterstore(byte[] dstkey, byte[]... keys);
 
-    Long sort(byte[] key, SortingParams sortingParameters, byte[] dstkey);
+	Long smove(byte[] srckey, byte[] dstkey, byte[] member);
 
-    Long sort(byte[] key, byte[] dstkey);
+	Long sort(byte[] key, SortingParams sortingParameters, byte[] dstkey);
 
-    Set<byte[]> sunion(byte[]... keys);
+	Long sort(byte[] key, byte[] dstkey);
 
-    Long sunionstore(byte[] dstkey, byte[]... keys);
+	Set<byte[]> sunion(byte[]... keys);
 
-    String watch(byte[]... keys);
+	Long sunionstore(byte[] dstkey, byte[]... keys);
 
-    String unwatch();
+	String watch(byte[]... keys);
 
-    Long zinterstore(byte[] dstkey, byte[]... sets);
+	String unwatch();
 
-    Long zinterstore(byte[] dstkey, ZParams params, byte[]... sets);
+	Long zinterstore(byte[] dstkey, byte[]... sets);
 
-    Long zunionstore(byte[] dstkey, byte[]... sets);
+	Long zinterstore(byte[] dstkey, ZParams params, byte[]... sets);
 
-    Long zunionstore(byte[] dstkey, ZParams params, byte[]... sets);
+	Long zunionstore(byte[] dstkey, byte[]... sets);
 
-    byte[] brpoplpush(byte[] source, byte[] destination, int timeout);
+	Long zunionstore(byte[] dstkey, ZParams params, byte[]... sets);
 
-    Long publish(byte[] channel, byte[] message);
+	byte[] brpoplpush(byte[] source, byte[] destination, int timeout);
 
-    void subscribe(BinaryJedisPubSub jedisPubSub, byte[]... channels);
+	Long publish(byte[] channel, byte[] message);
 
-    void psubscribe(BinaryJedisPubSub jedisPubSub, byte[]... patterns);
+	void subscribe(BinaryJedisPubSub jedisPubSub, byte[]... channels);
 
-    byte[] randomBinaryKey();
+	void psubscribe(BinaryJedisPubSub jedisPubSub, byte[]... patterns);
 
-    Long bitop(BitOP op, final byte[] destKey, byte[]... srcKeys);
-    
-    String pfmerge(final byte[] destkey, final byte[]... sourcekeys);
+	byte[] randomBinaryKey();
 
-    Long pfcount(byte[]... keys);
+	Long bitop(BitOP op, final byte[] destKey, byte[]... srcKeys);
+
+	String pfmerge(final byte[] destkey, final byte[]... sourcekeys);
+
+	Long pfcount(byte[]... keys);
+
 }

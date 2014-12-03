@@ -12,6 +12,9 @@ public interface BasicCommands {
 	 */
 	String auth(String password);
 
+	/**
+	 * PING 命令
+	 */
 	String ping();
 
 	String quit();

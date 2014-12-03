@@ -29,8 +29,14 @@ import redis.clients.util.SafeEncoder;
  */
 public class BinaryClient extends Connection {
 
+	/**
+	 * 相对链表元素的位置表示。
+	 */
 	public enum LIST_POSITION {
-		BEFORE, AFTER;
+		/** 在该元素之前插入 */
+		BEFORE,
+		/** 在该元素之后插入 */
+		AFTER;
 
 		public final byte[] raw;
 
@@ -44,9 +50,11 @@ public class BinaryClient extends Connection {
 	/** Redis DB索引 */
 	private long db;
 
-	private boolean isInMulti;
-
+	/** 是否锁定注"事务(Transaction)"命令操作的数据集 */
 	private boolean isInWatch;
+
+	/** 是否使用"事务(Transaction)"命令 */
+	private boolean isInMulti;
 
 	/**
 	 * 创建一个处理二进制数据格式的"Redis客户端"实例。
@@ -65,30 +73,6 @@ public class BinaryClient extends Connection {
 	 */
 	public BinaryClient(final String host, final int port) {
 		super(host, port);
-	}
-
-	public boolean isInMulti() {
-		return isInMulti;
-	}
-
-	public boolean isInWatch() {
-		return isInWatch;
-	}
-
-	/*
-	 * 合并所有参数。
-	 */
-	private byte[][] joinParameters(byte[] first, byte[][] rest) {
-		byte[][] result = new byte[rest.length + 1][];
-		result[0] = first;
-		for (int i = 0; i < rest.length; i++) {
-			result[i + 1] = rest[i];
-		}
-		return result;
-	}
-
-	public void setPassword(final String password) {
-		this.password = password;
 	}
 
 	/**
@@ -115,6 +99,55 @@ public class BinaryClient extends Connection {
 				super.getStatusCodeReply();
 			}
 		}
+	}
+
+	@Override
+	public void disconnect() {
+		db = 0;
+		super.disconnect();
+	}
+
+	/**
+	 * 关闭Redis客户端到服务器的连接。
+	 */
+	@Override
+	public void close() {
+		db = 0;
+		super.close();
+	}
+
+	/**
+	 * 是否锁定注"事务(Transaction)"命令操作的数据集。
+	 */
+	public boolean isInWatch() {
+		return isInWatch;
+	}
+
+	/**
+	 * 检测执行命令是否是"事务(Transaction)"命令。
+	 */
+	public boolean isInMulti() {
+		return isInMulti;
+	}
+
+	public void setPassword(final String password) {
+		this.password = password;
+	}
+
+	public Long getDB() {
+		return db;
+	}
+
+	/*
+	 * 合并所有参数。
+	 */
+	private byte[][] joinParameters(byte[] first, byte[][] rest) {
+		byte[][] result = new byte[rest.length + 1][];
+		result[0] = first;
+		for (int i = 0; i < rest.length; i++) {
+			result[i + 1] = rest[i];
+		}
+		return result;
 	}
 
 	public void ping() {
@@ -512,6 +545,17 @@ public class BinaryClient extends Connection {
 	public void unwatch() {
 		sendCommand(UNWATCH);
 		isInWatch = false;
+	}
+
+	/**
+	 * 重置"事务命令"的状态。
+	 */
+	public void resetState() {
+		if (this.isInMulti())
+			this.discard();
+
+		if (this.isInWatch())
+			this.unwatch();
 	}
 
 	public void sort(final byte[] key) {
@@ -1004,29 +1048,6 @@ public class BinaryClient extends Connection {
 				toByteArray(endOffset));
 	}
 
-	public Long getDB() {
-		return db;
-	}
-
-	public void disconnect() {
-		db = 0;
-		super.disconnect();
-	}
-
-	@Override
-	public void close() {
-		db = 0;
-		super.close();
-	}
-
-	public void resetState() {
-		if (isInMulti())
-			discard();
-
-		if (isInWatch())
-			unwatch();
-	}
-
 	private void sendEvalCommand(Command command, byte[] script,
 			byte[] keyCount, byte[][] params) {
 
@@ -1338,4 +1359,5 @@ public class BinaryClient extends Connection {
 	public void pfmerge(final byte[] destkey, final byte[]... sourcekeys) {
 		sendCommand(PFMERGE, joinParameters(destkey, sourcekeys));
 	}
+
 }
