@@ -350,12 +350,17 @@ public final class Protocol {
 		}
 	}
 
+	/**
+	 * "Redis关键字"枚举表示
+	 */
 	public static enum Keyword {
 		AGGREGATE, ALPHA, ASC, BY, DESC, GET, LIMIT, MESSAGE, NO, NOSORT, PMESSAGE, PSUBSCRIBE, PUNSUBSCRIBE, OK, ONE, QUEUED, SET, STORE, SUBSCRIBE, UNSUBSCRIBE, WEIGHTS, WITHSCORES, RESETSTAT, RESET, FLUSH, EXISTS, LOAD, KILL, LEN, REFCOUNT, ENCODING, IDLETIME, AND, OR, XOR, NOT, GETNAME, SETNAME, LIST, MATCH, COUNT;
+
 		public final byte[] raw;
 
-		Keyword() {
+		private Keyword() {
 			raw = SafeEncoder.encode(this.name().toLowerCase());
 		}
 	}
+
 }
