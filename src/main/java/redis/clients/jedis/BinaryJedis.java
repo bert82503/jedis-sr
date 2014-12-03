@@ -21,7 +21,7 @@ import redis.clients.util.JedisURIHelper;
 import redis.clients.util.SafeEncoder;
 
 /**
- * 处理二进制数据格式的"Jedis客户端"实现。
+ * 处理二进制数据格式的"Jedis客户端"实现，基于{@link Client}实现。
  * 
  * @author huagang.li 2014年12月3日 下午5:14:30
  */
@@ -57,7 +57,7 @@ public class BinaryJedis implements BasicCommands, BinaryJedisCommands,
 	}
 
 	/**
-	 * 创建一个给定Jedis节点分片信息的二进制"Jedis客户端"实例。
+	 * 创建一个给定的"Jedis节点分片信息"的二进制"Jedis客户端"实例。
 	 * 
 	 * @param shardInfo
 	 *            Jedis节点分片信息

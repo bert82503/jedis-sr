@@ -100,6 +100,7 @@ public class Connection implements Closeable {
 				socket.setSoLinger(true, 0);
 
 				// 创建一条新的连接到后端Redis服务器的链接
+				// TODO 连接超时与读取超时，使用同一个参数值不合理！
 				socket.connect(new InetSocketAddress(host, port), timeout);
 				socket.setSoTimeout(timeout);
 
