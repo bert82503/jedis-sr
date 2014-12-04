@@ -5,13 +5,14 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 节点分片集群实现。
+ * "节点分片集群"实现，实现资源R到ShardInfo<R>的映射。
  * 
  * @author huagang.li 2014年12月2日 下午8:00:14
  */
@@ -20,9 +21,19 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	/** 默认的分片权重(虚拟节点数) */
 	public static final int DEFAULT_WEIGHT = 1;
 
-	private TreeMap<Long, S> nodes;
+	// the tag is anything between {}
+	public static final Pattern DEFAULT_KEY_TAG_PATTERN = Pattern
+			.compile("\\{(.+?)\\}");
+
+	/*
+	 * 集群信息
+	 */
+	/** 虚拟节点映射表(<hash, ShardInfo<R>>) */
+	private NavigableMap<Long, S> nodes;
+	/** (一致性)哈希算法 */
 	private final Hashing algo;
-	private final Map<ShardInfo<R>, R> resources = new LinkedHashMap<ShardInfo<R>, R>();
+	/** 真实节点到资源的映射表(<ShardInfo<R>, R>) */
+	private final Map<S, R> resources = new LinkedHashMap<S, R>();
 
 	/**
 	 * The default pattern used for extracting a key tag. The pattern must have
@@ -31,70 +42,114 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	 * improving performance a little bit is key tags aren't being used.
 	 */
 	private Pattern tagPattern = null;
-	// the tag is anything between {}
-	public static final Pattern DEFAULT_KEY_TAG_PATTERN = Pattern
-			.compile("\\{(.+?)\\}");
 
+	//
+	// ================================
 	public Sharded(List<S> shards) {
-		this(shards, Hashing.MURMUR_HASH); // MD5 is really not good as we works
-		// with 64-bits not 128
+		// MD5 is really not good as we works with 64-bits not 128
+		this(shards, Hashing.MURMUR_HASH);
 	}
 
 	public Sharded(List<S> shards, Hashing algo) {
 		this.algo = algo;
-		initialize(shards);
+		this.initialize(shards);
 	}
 
 	public Sharded(List<S> shards, Pattern tagPattern) {
-		this(shards, Hashing.MURMUR_HASH, tagPattern); // MD5 is really not good
-		// as we works with
-		// 64-bits not 128
+		// MD5 is really not good as we works with 64-bits not 128
+		this(shards, Hashing.MURMUR_HASH, tagPattern);
 	}
 
+	/**
+	 * 创建一个"节点分片集群"实例。
+	 * 
+	 * @param shards
+	 *            真实节点列表
+	 * @param algo
+	 *            哈希算法
+	 * @param tagPattern
+	 *            键标记模式
+	 */
 	public Sharded(List<S> shards, Hashing algo, Pattern tagPattern) {
 		this.algo = algo;
 		this.tagPattern = tagPattern;
-		initialize(shards);
+		this.initialize(shards);
 	}
 
+	/*
+	 * [核心] 初始化集群信息。
+	 */
 	private void initialize(List<S> shards) {
 		nodes = new TreeMap<Long, S>();
 
-		for (int i = 0; i != shards.size(); ++i) {
-			final S shardInfo = shards.get(i);
-			if (shardInfo.getName() == null)
-				for (int n = 0; n < 160 * shardInfo.getWeight(); n++) {
-					nodes.put(this.algo.hash("SHARD-" + i + "-NODE-" + n),
-							shardInfo);
+		int size = shards.size();
+		for (int i = 0; i < size; ++i) {
+			S shardInfo = shards.get(i);
+			int weight = 160 * shardInfo.getWeight(); // 放大160倍
+			if (shardInfo.getName() == null) {
+				for (int n = 0; n < weight; n++) {
+					// 构造默认分片名称，并进行哈希计算
+					long hash = algo.hash("SHARD-" + i + "-NODE-" + n);
+					nodes.put(Long.valueOf(hash), shardInfo);
 				}
-			else
-				for (int n = 0; n < 160 * shardInfo.getWeight(); n++) {
-					nodes.put(
-							this.algo.hash(shardInfo.getName() + "*"
-									+ shardInfo.getWeight() + n), shardInfo);
+			} else {
+				for (int n = 0; n < weight; n++) {
+					// 根据自定义的分片名称和权重来构造分片名称，并进行哈希计算
+					long hash = algo.hash(shardInfo.getName() + "*"
+							+ shardInfo.getWeight() + n);
+					nodes.put(Long.valueOf(hash), shardInfo);
 				}
-			resources.put(shardInfo, shardInfo.createResource());
+			}
+
+			R resource = shardInfo.createResource();
+			resources.put(shardInfo, resource);
 		}
 	}
 
-	public R getShard(byte[] key) {
-		return resources.get(getShardInfo(key));
-	}
-
-	public R getShard(String key) {
-		return resources.get(getShardInfo(key));
-	}
-
+	/**
+	 * 获取给定的键所映射的"节点分片信息"。
+	 * 
+	 * @param key
+	 * @return
+	 */
 	public S getShardInfo(byte[] key) {
 		SortedMap<Long, S> tail = nodes.tailMap(algo.hash(key));
-		if (tail.isEmpty()) {
+		if (tail.isEmpty()) { // 当定位到末尾节点时，则循环使用第一个节点（构成一个环形）
 			return nodes.get(nodes.firstKey());
 		}
 		return tail.get(tail.firstKey());
 	}
 
+	/**
+	 * 获取给定的键所映射的"节点分片信息"。
+	 * 
+	 * @param key
+	 *            键
+	 * @return
+	 */
 	public S getShardInfo(String key) {
-		return getShardInfo(SafeEncoder.encode(getKeyTag(key)));
+		return this.getShardInfo(SafeEncoder.encode(this.getKeyTag(key)));
+	}
+
+	/**
+	 * 获取给定的键所映射的"节点客户端"资源。
+	 * 
+	 * @param key
+	 * @return
+	 */
+	public R getShard(byte[] key) {
+		return resources.get(this.getShardInfo(key));
+	}
+
+	/**
+	 * 获取给定的键所映射的"节点客户端"资源。
+	 * 
+	 * @param key
+	 *            键
+	 * @return
+	 */
+	public R getShard(String key) {
+		return resources.get(this.getShardInfo(key));
 	}
 
 	/**
@@ -109,17 +164,29 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	public String getKeyTag(String key) {
 		if (tagPattern != null) {
 			Matcher m = tagPattern.matcher(key);
-			if (m.find())
+			if (m.find()) {
 				return m.group(1);
+			}
 		}
 		return key;
 	}
 
+	/**
+	 * 获取所有的"节点分片信息"列表。
+	 * 
+	 * @return
+	 */
 	public Collection<S> getAllShardInfo() {
 		return Collections.unmodifiableCollection(nodes.values());
 	}
 
+	/**
+	 * 获取所有的"节点客户端"资源列表。
+	 * 
+	 * @return
+	 */
 	public Collection<R> getAllShards() {
 		return Collections.unmodifiableCollection(resources.values());
 	}
+
 }
