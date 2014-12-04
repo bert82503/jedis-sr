@@ -63,8 +63,8 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 	 * 
 	 * <pre>
 	 * 分2个步骤：
-	 * 	1. 从Pool<ShardedJedis>中获取一个ShardedJedis资源；
-	 * 	2. 设置ShardedJedis资源所在的连接池数据源。
+	 * 	1. 从Pool<ShardedJedis>中获取一个{@link ShardedJedis}资源；
+	 * 	2. 设置{@link ShardedJedis}资源所在的连接池数据源。
 	 * </pre>
 	 */
 	@Override
@@ -75,7 +75,7 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 	}
 
 	/**
-	 * 将正常的ShardedJedis资源返回给"连接池"。
+	 * 将正常的{@link ShardedJedis}资源返回给"连接池"。
 	 */
 	@Override
 	public void returnResource(ShardedJedis resource) {
@@ -86,7 +86,7 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 	}
 
 	/**
-	 * 将出现异常的ShardedJedis资源返回给"连接池"。
+	 * 将出现异常的{@link ShardedJedis}资源返回给"连接池"。
 	 */
 	@Override
 	public void returnBrokenResource(ShardedJedis resource) {
@@ -96,7 +96,9 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 	}
 
 	/**
-	 * {@link PoolableObjectFactory<ShardedJedis>}自定义实现类。
+	 * PoolableObjectFactory custom impl.
+	 * <p>
+	 * {@link PooledObjectFactory<ShardedJedis>}自定义实现类。
 	 */
 	private static class ShardedJedisFactory implements
 			PooledObjectFactory<ShardedJedis> {
@@ -115,37 +117,55 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 			this.keyTagPattern = keyTagPattern;
 		}
 
+		/**
+		 * 创建一个{@link ShardedJedis}资源实例，并将它包装在{@link PooledObject}里便于连接池管理。
+		 * <p>
+		 * {@inheritDoc}
+		 */
 		@Override
 		public PooledObject<ShardedJedis> makeObject() throws Exception {
 			ShardedJedis jedis = new ShardedJedis(shards, algo, keyTagPattern);
 			return new DefaultPooledObject<ShardedJedis>(jedis);
 		}
 
+		/**
+		 * 销毁整个{@link ShardedJedis}资源连接池。
+		 * <p>
+		 * {@inheritDoc}
+		 */
 		@Override
 		public void destroyObject(PooledObject<ShardedJedis> pooledShardedJedis)
 				throws Exception {
 			final ShardedJedis shardedJedis = pooledShardedJedis.getObject();
-			for (Jedis jedis : shardedJedis.getAllShards()) {
-				try {
-					try {
-						jedis.quit();
-					} catch (Exception e) {
-
-					}
-					jedis.disconnect();
-				} catch (Exception e) {
-
-				}
-			}
+			shardedJedis.disconnect();
+			// for (Jedis jedis : shardedJedis.getAllShards()) {
+			// try {
+			// try {
+			// // 请求服务端关闭连接
+			// jedis.quit();
+			// } catch (Exception e) {
+			// // 忽略
+			// }
+			// // 客户端主动关闭连接
+			// jedis.disconnect();
+			// } catch (Exception e) {
+			//
+			// }
+			// }
 		}
 
+		/**
+		 * 校验整个{@link ShardedJedis}资源连接池中的所有是Jedis客户端链接否正常。
+		 * <p>
+		 * {@inheritDoc}
+		 */
 		@Override
 		public boolean validateObject(
 				PooledObject<ShardedJedis> pooledShardedJedis) {
 			try {
 				ShardedJedis jedis = pooledShardedJedis.getObject();
 				for (Jedis shard : jedis.getAllShards()) {
-					if (!shard.ping().equals("PONG")) {
+					if (!shard.ping().equals("PONG")) { // PING 命令
 						return false;
 					}
 				}
@@ -158,13 +178,15 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 		@Override
 		public void activateObject(PooledObject<ShardedJedis> p)
 				throws Exception {
-
+			//
 		}
 
 		@Override
 		public void passivateObject(PooledObject<ShardedJedis> p)
 				throws Exception {
-
+			//
 		}
+
 	}
+
 }
