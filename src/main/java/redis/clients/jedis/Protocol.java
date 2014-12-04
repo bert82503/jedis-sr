@@ -21,6 +21,7 @@ public final class Protocol {
 	private static final String ASK_RESPONSE = "ASK";
 	private static final String MOVED_RESPONSE = "MOVED";
 	private static final String CLUSTERDOWN_RESPONSE = "CLUSTERDOWN";
+
 	/** 默认的Redis服务端口 */
 	public static final int DEFAULT_PORT = 6379;
 	/** 默认的Sentinel服务端口 */
@@ -30,7 +31,7 @@ public final class Protocol {
 	/** 默认的数据库索引 */
 	public static final int DEFAULT_DATABASE = 0;
 
-	/** 编码 */
+	/** 内容编码 */
 	public static final String CHARSET = "UTF-8";
 
 	/** 请求响应内容类型标识 */
@@ -111,13 +112,13 @@ public final class Protocol {
 	 * @param args
 	 *            二进制格式的命令参数列表
 	 */
-	public static void sendCommand(final RedisOutputStream os,
-			final Command command, final byte[]... args) {
+	public static void sendCommand(RedisOutputStream os, Command command,
+			byte[]... args) {
 		sendCommand(os, command.raw, args);
 	}
 
-	private static void sendCommand(final RedisOutputStream os,
-			final byte[] command, final byte[]... args) {
+	private static void sendCommand(RedisOutputStream os, byte[] command,
+			byte[]... args) {
 		/*
 		 * 构造"Redis二进制协议"格式内容
 		 */
@@ -129,7 +130,7 @@ public final class Protocol {
 			os.write(command);
 			os.writeCrLf();
 
-			for (final byte[] arg : args) {
+			for (byte[] arg : args) {
 				os.write(DOLLAR_BYTE);
 				os.writeIntCrLf(arg.length);
 				os.write(arg);
@@ -146,7 +147,7 @@ public final class Protocol {
 	 *
 	 * @param is
 	 */
-	private static void processError(final RedisInputStream is) {
+	private static void processError(RedisInputStream is) {
 		String message = is.readLine();
 		// TODO: I'm not sure if this is the best way to do this.
 		// Maybe Read only first 5 bytes instead?
@@ -190,7 +191,7 @@ public final class Protocol {
 	 * @param is
 	 * @return
 	 */
-	private static Object process(final RedisInputStream is) {
+	private static Object process(RedisInputStream is) {
 		try {
 			byte b = is.readByte();
 			if (b == MINUS_BYTE) {
@@ -217,14 +218,14 @@ public final class Protocol {
 	/*
 	 * 处理请求返回状态码。
 	 */
-	private static byte[] processStatusCodeReply(final RedisInputStream is) {
+	private static byte[] processStatusCodeReply(RedisInputStream is) {
 		return SafeEncoder.encode(is.readLine());
 	}
 
 	/*
 	 * 处理一条命令的响应内容。
 	 */
-	private static byte[] processBulkReply(final RedisInputStream is) {
+	private static byte[] processBulkReply(RedisInputStream is) {
 		int len = Integer.parseInt(is.readLine());
 		if (len == -1) {
 			return null;
@@ -252,7 +253,7 @@ public final class Protocol {
 	/*
 	 * 处理整数值。
 	 */
-	private static Long processInteger(final RedisInputStream is) {
+	private static Long processInteger(RedisInputStream is) {
 		String num = is.readLine();
 		return Long.valueOf(num);
 	}
@@ -260,7 +261,7 @@ public final class Protocol {
 	/*
 	 * 处理多个命令的响应内容。
 	 */
-	private static List<Object> processMultiBulkReply(final RedisInputStream is) {
+	private static List<Object> processMultiBulkReply(RedisInputStream is) {
 		int num = Integer.parseInt(is.readLine());
 		if (num == -1) {
 			return null;
@@ -283,7 +284,7 @@ public final class Protocol {
 	 * @param is
 	 * @return
 	 */
-	public static Object read(final RedisInputStream is) {
+	public static Object read(RedisInputStream is) {
 		return process(is);
 	}
 
@@ -293,7 +294,7 @@ public final class Protocol {
 	 * @param value
 	 * @return
 	 */
-	public static final byte[] toByteArray(final boolean value) {
+	public static final byte[] toByteArray(boolean value) {
 		return toByteArray(value ? 1 : 0);
 	}
 
@@ -303,7 +304,7 @@ public final class Protocol {
 	 * @param value
 	 * @return
 	 */
-	public static final byte[] toByteArray(final int value) {
+	public static final byte[] toByteArray(int value) {
 		return SafeEncoder.encode(String.valueOf(value));
 	}
 
@@ -313,7 +314,7 @@ public final class Protocol {
 	 * @param value
 	 * @return
 	 */
-	public static final byte[] toByteArray(final long value) {
+	public static final byte[] toByteArray(long value) {
 		return SafeEncoder.encode(String.valueOf(value));
 	}
 
@@ -323,7 +324,7 @@ public final class Protocol {
 	 * @param value
 	 * @return
 	 */
-	public static final byte[] toByteArray(final double value) {
+	public static final byte[] toByteArray(double value) {
 		return SafeEncoder.encode(String.valueOf(value));
 	}
 

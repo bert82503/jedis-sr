@@ -34,8 +34,8 @@ public abstract class Pool<R> implements Closeable {
 	 * @param factory
 	 *            连接池对象的工厂
 	 */
-	public Pool(final GenericObjectPoolConfig poolConfig,
-			final PooledObjectFactory<R> factory) {
+	public Pool(GenericObjectPoolConfig poolConfig,
+			PooledObjectFactory<R> factory) {
 		this.initPool(poolConfig, factory);
 	}
 
@@ -47,8 +47,9 @@ public abstract class Pool<R> implements Closeable {
 	 * @param factory
 	 *            连接池对象的工厂
 	 */
-	public void initPool(final GenericObjectPoolConfig poolConfig,
-			final PooledObjectFactory<R> factory) {
+	public void initPool(GenericObjectPoolConfig poolConfig,
+			PooledObjectFactory<R> factory) {
+		// 若原有的连接池资源未释放，则先关闭
 		if (this.internalPool != null) {
 			try {
 				this.closeInternalPool();
@@ -78,7 +79,7 @@ public abstract class Pool<R> implements Closeable {
 	 * @param resource
 	 *            正常的资源
 	 */
-	public void returnResource(final R resource) {
+	public void returnResource(R resource) {
 		if (resource != null) {
 			this.returnResourceObject(resource);
 		}
@@ -89,7 +90,7 @@ public abstract class Pool<R> implements Closeable {
 	 * 
 	 * @param resource
 	 */
-	protected void returnResourceObject(final R resource) {
+	protected void returnResourceObject(R resource) {
 		if (resource == null) {
 			return;
 		}
@@ -110,7 +111,7 @@ public abstract class Pool<R> implements Closeable {
 	 * @param resource
 	 *            阻塞的资源
 	 */
-	public void returnBrokenResource(final R resource) {
+	public void returnBrokenResource(R resource) {
 		if (resource != null) {
 			this.returnBrokenResourceObject(resource);
 		}
@@ -121,7 +122,7 @@ public abstract class Pool<R> implements Closeable {
 	 * 
 	 * @param resource
 	 */
-	protected void returnBrokenResourceObject(final R resource) {
+	protected void returnBrokenResourceObject(R resource) {
 		try {
 			// 销毁连接池中的这个资源对象
 			internalPool.invalidateObject(resource);

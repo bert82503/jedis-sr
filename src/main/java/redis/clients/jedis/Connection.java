@@ -36,8 +36,9 @@ public class Connection implements Closeable {
 	/** 套接字存活保持时间、连接超时时间、读取超时时间(ms) */
 	private int timeout = Protocol.DEFAULT_TIMEOUT;
 
-	/** 链接是否阻塞了 */
+	/** 套接字是否出现异常 */
 	private boolean broken = false;
+
 	/** 已进入管道的命令计数器 */
 	private int pipelinedCommands = 0;
 
@@ -49,7 +50,7 @@ public class Connection implements Closeable {
 	 * 
 	 * @param host
 	 */
-	public Connection(final String host) {
+	public Connection(String host) {
 		this.host = host;
 	}
 
@@ -59,7 +60,7 @@ public class Connection implements Closeable {
 	 * @param host
 	 * @param port
 	 */
-	public Connection(final String host, final int port) {
+	public Connection(String host, int port) {
 		this.host = host;
 		this.port = port;
 	}
@@ -122,7 +123,7 @@ public class Connection implements Closeable {
 	 *            参数列表
 	 * @return
 	 */
-	protected Connection sendCommand(final Command cmd, final String... args) {
+	protected Connection sendCommand(Command cmd, String... args) {
 		final byte[][] bargs = new byte[args.length][];
 		for (int i = 0; i < args.length; i++) {
 			bargs[i] = SafeEncoder.encode(args[i]);
@@ -146,7 +147,7 @@ public class Connection implements Closeable {
 	 *            参数列表
 	 * @return
 	 */
-	protected Connection sendCommand(final Command cmd, final byte[]... args) {
+	protected Connection sendCommand(Command cmd, byte[]... args) {
 		try {
 			this.connect();
 			Protocol.sendCommand(outputStream, cmd, args);
@@ -162,7 +163,7 @@ public class Connection implements Closeable {
 	/** 空参数列表 */
 	private static final byte[][] EMPTY_ARGS = new byte[0][];
 
-	protected Connection sendCommand(final Command cmd) {
+	protected Connection sendCommand(Command cmd) {
 		return this.sendCommand(cmd, EMPTY_ARGS);
 	}
 
@@ -201,7 +202,7 @@ public class Connection implements Closeable {
 	}
 
 	/**
-	 * 链接是否被阻塞了。
+	 * 链接是否出现异常了。
 	 */
 	public boolean isBroken() {
 		return broken;
@@ -363,7 +364,7 @@ public class Connection implements Closeable {
 		return host;
 	}
 
-	public void setHost(final String host) {
+	public void setHost(String host) {
 		this.host = host;
 	}
 
@@ -371,7 +372,7 @@ public class Connection implements Closeable {
 		return port;
 	}
 
-	public void setPort(final int port) {
+	public void setPort(int port) {
 		this.port = port;
 	}
 
@@ -379,7 +380,7 @@ public class Connection implements Closeable {
 		return timeout;
 	}
 
-	public void setTimeout(final int timeout) {
+	public void setTimeout(int timeout) {
 		this.timeout = timeout;
 	}
 
