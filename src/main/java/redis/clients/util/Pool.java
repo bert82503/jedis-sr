@@ -106,10 +106,10 @@ public abstract class Pool<R> implements Closeable {
 	}
 
 	/**
-	 * 将阻塞的资源返回给"连接池"。
+	 * 将出现异常的资源返回给"连接池"。
 	 * 
 	 * @param resource
-	 *            阻塞的资源
+	 *            出现异常的资源
 	 */
 	public void returnBrokenResource(R resource) {
 		if (resource != null) {

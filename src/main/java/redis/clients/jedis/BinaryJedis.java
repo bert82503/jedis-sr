@@ -62,7 +62,7 @@ public class BinaryJedis implements BasicCommands, BinaryJedisCommands,
 	 * @param shardInfo
 	 *            Jedis节点分片信息
 	 */
-	public BinaryJedis(final JedisShardInfo shardInfo) {
+	public BinaryJedis(JedisShardInfo shardInfo) {
 		client = new Client(shardInfo.getHost(), shardInfo.getPort());
 		client.setTimeout(shardInfo.getTimeout());
 		client.setPassword(shardInfo.getPassword());

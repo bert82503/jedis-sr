@@ -79,7 +79,7 @@ public class BinaryClient extends Connection {
 	 * 连接到Redis服务器。
 	 * 
 	 * <pre>
-	 * 分四步骤：
+	 * 分4个步骤：
 	 * 	1. 若当前的链接套接字还打开着，则直接返回；
 	 * 	2. 否则，创建一条新的套接字链接；
 	 * 	3. 校验服务端访问密码；

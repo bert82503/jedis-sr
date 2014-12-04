@@ -80,7 +80,7 @@ public class Connection implements Closeable {
 	 * 连接到Redis服务器。
 	 * 
 	 * <pre>
-	 * 分二步骤：
+	 * 分2个步骤：
 	 * 	1. 若当前的链接套接字还打开着，则直接返回；
 	 * 	2. 否则，创建一条新的套接字链接。
 	 * </pre>
@@ -135,7 +135,7 @@ public class Connection implements Closeable {
 	 * 发送一条命令到Redis服务器端。
 	 * 
 	 * <pre>
-	 * 分三步骤：
+	 * 分3个步骤：
 	 * 	1. 连接到Redis服务器；
 	 * 	2. 发送命令（基于{@link Protocol#sendCommand(RedisOutputStream, Command, byte[]...)}实现）；
 	 * 	3. 进入管道的命令计数器加1。
