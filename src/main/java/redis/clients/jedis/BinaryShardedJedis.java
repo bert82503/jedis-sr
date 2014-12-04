@@ -11,7 +11,7 @@ import redis.clients.util.Hashing;
 import redis.clients.util.Sharded;
 
 /**
- * 处理二进制数据格式的分片的Jedis集群实现，继承自{@link Sharded<Jedis, JedisShardInfo>}。
+ * "二进制数据分片的Jedis集群"实现，继承自{@link Sharded<Jedis, JedisShardInfo>}。
  * 
  * @author huagang.li 2014年12月4日 下午12:48:59
  */
@@ -31,10 +31,10 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 	}
 
 	/**
-	 * 创建一个"二进制数据格式的分片的Jedis集群"实例。
+	 * 创建一个"二进制数据分片的Jedis集群"实例。
 	 * 
 	 * @param shards
-	 *            Jedis节点分片信息
+	 *            Jedis节点分片信息列表
 	 * @param algo
 	 *            哈希算法
 	 * @param keyTagPattern
@@ -333,7 +333,7 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 	}
 
 	@Override
-	public List srandmember(byte[] key, int count) {
+	public List<byte[]> srandmember(byte[] key, int count) {
 		Jedis j = getShard(key);
 		return j.srandmember(key, count);
 	}
