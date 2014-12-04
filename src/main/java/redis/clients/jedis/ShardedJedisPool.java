@@ -12,32 +12,61 @@ import redis.clients.util.Hashing;
 import redis.clients.util.Pool;
 
 /**
- * "数据分片的Redis连接池"实现。
+ * "数据分片的Jedis连接池"实现，继承自{@link Pool<ShardedJedis>}。
  * 
  * @author huagang.li 2014年12月2日 下午7:29:59
  */
 public class ShardedJedisPool extends Pool<ShardedJedis> {
 
-	public ShardedJedisPool(final GenericObjectPoolConfig poolConfig,
+	/**
+	 * 创建一个"数据分片的Jedis连接池"实例。
+	 * 
+	 * @param poolConfig
+	 *            连接池配置信息
+	 * @param shards
+	 *            Jedis节点分片信息列表
+	 */
+	public ShardedJedisPool(GenericObjectPoolConfig poolConfig,
 			List<JedisShardInfo> shards) {
 		this(poolConfig, shards, Hashing.MURMUR_HASH);
 	}
 
-	public ShardedJedisPool(final GenericObjectPoolConfig poolConfig,
+	public ShardedJedisPool(GenericObjectPoolConfig poolConfig,
 			List<JedisShardInfo> shards, Hashing algo) {
 		this(poolConfig, shards, algo, null);
 	}
 
-	public ShardedJedisPool(final GenericObjectPoolConfig poolConfig,
+	public ShardedJedisPool(GenericObjectPoolConfig poolConfig,
 			List<JedisShardInfo> shards, Pattern keyTagPattern) {
 		this(poolConfig, shards, Hashing.MURMUR_HASH, keyTagPattern);
 	}
 
-	public ShardedJedisPool(final GenericObjectPoolConfig poolConfig,
+	/**
+	 * 创建一个"数据分片的Jedis连接池"实例，使用自定义实现的{@link ShardedJedisFactory}。
+	 * 
+	 * @param poolConfig
+	 *            连接池配置信息
+	 * @param shards
+	 *            Jedis节点分片信息列表
+	 * @param algo
+	 *            哈希算法
+	 * @param keyTagPattern
+	 *            键标记模式
+	 */
+	public ShardedJedisPool(GenericObjectPoolConfig poolConfig,
 			List<JedisShardInfo> shards, Hashing algo, Pattern keyTagPattern) {
 		super(poolConfig, new ShardedJedisFactory(shards, algo, keyTagPattern));
 	}
 
+	/**
+	 * 获取"Jedis连接池"中的一个{@link ShardedJedis}资源。
+	 * 
+	 * <pre>
+	 * 分2个步骤：
+	 * 	1. 从Pool<ShardedJedis>中获取一个ShardedJedis资源；
+	 * 	2. 设置ShardedJedis资源所在的连接池数据源。
+	 * </pre>
+	 */
 	@Override
 	public ShardedJedis getResource() {
 		ShardedJedis jedis = super.getResource();
@@ -45,28 +74,38 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 		return jedis;
 	}
 
+	/**
+	 * 将正常的ShardedJedis资源返回给"连接池"。
+	 */
 	@Override
-	public void returnBrokenResource(final ShardedJedis resource) {
-		if (resource != null) {
-			returnBrokenResourceObject(resource);
-		}
-	}
-
-	@Override
-	public void returnResource(final ShardedJedis resource) {
+	public void returnResource(ShardedJedis resource) {
 		if (resource != null) {
 			resource.resetState();
-			returnResourceObject(resource);
+			this.returnResourceObject(resource);
 		}
 	}
 
 	/**
-	 * PoolableObjectFactory custom impl.
+	 * 将出现异常的ShardedJedis资源返回给"连接池"。
+	 */
+	@Override
+	public void returnBrokenResource(ShardedJedis resource) {
+		if (resource != null) {
+			this.returnBrokenResourceObject(resource);
+		}
+	}
+
+	/**
+	 * {@link PoolableObjectFactory<ShardedJedis>}自定义实现类。
 	 */
 	private static class ShardedJedisFactory implements
 			PooledObjectFactory<ShardedJedis> {
+
+		/** Jedis节点分片列表 */
 		private List<JedisShardInfo> shards;
+		/** (一致性)哈希算法 */
 		private Hashing algo;
+		/** 键标记模式 */
 		private Pattern keyTagPattern;
 
 		public ShardedJedisFactory(List<JedisShardInfo> shards, Hashing algo,
