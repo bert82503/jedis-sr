@@ -6,13 +6,13 @@ import redis.clients.util.ShardInfo;
 import redis.clients.util.Sharded;
 
 /**
- * "Redis节点分片信息"表示。(继承自 ShardInfo<Jedis>)
+ * "Jedis节点分片信息"表示，继承自{@link ShardInfo<Jedis>}。
  * 
  * @author huagang.li 2014年12月2日 下午7:32:23
  */
 public class JedisShardInfo extends ShardInfo<Jedis> {
 
-	/** 主机[名称/IP] */
+	/** 主机名称/IP */
 	private String host;
 
 	/** 端口号 */
@@ -58,14 +58,14 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 	}
 
 	/**
-	 * 创建一个"Redis节点分片信息"实例。
+	 * 创建一个"Jedis节点分片信息"实例。
 	 * 
 	 * @param host
 	 *            主机名称/IP
 	 * @param port
 	 *            端口号
 	 * @param timeout
-	 *            超时时间
+	 *            超时时间(ms)
 	 * @param name
 	 *            节点分片名称
 	 */
@@ -74,6 +74,18 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 		this.name = name;
 	}
 
+	/**
+	 * 创建一个"Jedis节点分片信息"实例。
+	 * 
+	 * @param host
+	 *            主机名称/IP
+	 * @param port
+	 *            端口号
+	 * @param timeout
+	 *            超时时间(ms)
+	 * @param weight
+	 *            节点权重
+	 */
 	public JedisShardInfo(String host, int port, int timeout, int weight) {
 		super(weight);
 		this.host = host;
@@ -89,27 +101,11 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 	}
 
 	/**
-	 * 创建一条新的连接到Redis链接。
+	 * 创建一个新的"Jedis客户端"实例。
 	 */
 	@Override
 	public Jedis createResource() {
 		return new Jedis(this);
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	/**
-	 * <pre>
-	 * 返回格式：
-	 * 	主机IP:端口号:权重
-	 * </pre>
-	 */
-	@Override
-	public String toString() {
-		return host + ":" + port + "*" + this.getWeight();
 	}
 
 	/**
@@ -124,6 +120,25 @@ public class JedisShardInfo extends ShardInfo<Jedis> {
 	 */
 	public int getPort() {
 		return port;
+	}
+
+	/**
+	 * 返回Redis节点的分片名称。
+	 */
+	@Override
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * <pre>
+	 * 返回格式：
+	 * 	主机IP:端口号:权重
+	 * </pre>
+	 */
+	@Override
+	public String toString() {
+		return host + ":" + port + "*" + this.getWeight();
 	}
 
 	public String getPassword() {
