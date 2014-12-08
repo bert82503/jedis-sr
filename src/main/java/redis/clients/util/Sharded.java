@@ -12,7 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * "节点分片集群"实现，实现资源R到ShardInfo<R>的映射。
+ * "节点分片集群"实现，实现虚拟节点ShardInfo<R>到链接资源R的映射。
  * 
  * @author huagang.li 2014年12月2日 下午8:00:14
  */
@@ -27,12 +27,17 @@ public class Sharded<R, S extends ShardInfo<R>> {
 
 	/*
 	 * 集群信息
+	 *   "虚拟节点hash值到分片节点的映射表(<hash, ShardInfo<R>>)"
+	 *   "分片节点到真实节点链接资源的映射表(<ShardInfo<R>, R>)"
+	 * 上述数据结构设计，保证一个"分片集群池对象"只包含分片节点数的真实节点链接资源。
+	 * 
+	 * 例如，共3台服务器构成一个集群，那么每个池对象就仅包含3条到后端真实节点的链接。
 	 */
-	/** 虚拟节点映射表(<hash, ShardInfo<R>>) */
+	/** 虚拟节点hash值到分片节点的映射表(<hash, ShardInfo<R>>) */
 	private NavigableMap<Long, S> nodes;
 	/** (一致性)哈希算法 */
 	private final Hashing algo;
-	/** 真实节点到资源的映射表(<ShardInfo<R>, R>) */
+	/** 分片节点到真实节点链接资源的映射表(<ShardInfo<R>, R>) */
 	private final Map<S, R> resources = new LinkedHashMap<S, R>();
 
 	/**
@@ -85,21 +90,30 @@ public class Sharded<R, S extends ShardInfo<R>> {
 		int size = shards.size();
 		for (int i = 0; i < size; ++i) {
 			S shardInfo = shards.get(i);
+			
+			// 一致性哈希算法
 			int weight = 160 * shardInfo.getWeight(); // 放大160倍
 			if (shardInfo.getName() == null) {
 				for (int n = 0; n < weight; n++) {
 					// 构造默认分片名称，并进行哈希计算
+					// 大坑：将节点的顺序索引i作为hash的一部分！
+					// 当节点顺序被无意识地调整了，那就杯具啦！
 					long hash = algo.hash("SHARD-" + i + "-NODE-" + n);
 					nodes.put(Long.valueOf(hash), shardInfo);
 				}
 			} else {
 				for (int n = 0; n < weight; n++) {
 					// 根据自定义的分片名称和权重来构造分片名称，并进行哈希计算
+					// 坑："节点名称+权重"必须是唯一的，否则节点会出现重叠覆盖！
+					// 同时，"节点名称+权重"必须不能被中途改变！
+					// 这样设计避免了"因节点顺序调整而引发rehash"的问题
 					long hash = algo.hash(shardInfo.getName() + "*"
 							+ shardInfo.getWeight() + n);
 					nodes.put(Long.valueOf(hash), shardInfo);
 				}
 			}
+			// 较好地hash策略是：唯一节点名称+编号
+			// long hash = algo.hash(shardInfo.getName() + "*" + n);
 
 			R resource = shardInfo.createResource();
 			resources.put(shardInfo, resource);
