@@ -186,7 +186,7 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取所有的"节点分片信息"列表。
+	 * 获取该集群的所有"Redis节点分片信息"的列表。
 	 * 
 	 * @return
 	 */
