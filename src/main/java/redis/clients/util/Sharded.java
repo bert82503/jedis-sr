@@ -121,7 +121,7 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取给定的键所映射的"Jedis节点客户端"。
+	 * 获取给定的键所映射的"Redis节点客户端"，使用"节点分片信息"过渡。
 	 * 
 	 * @param key
 	 *            键
@@ -132,7 +132,7 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取给定的键所映射的"Jedis节点客户端"。
+	 * 获取给定的键所映射的"Redis节点客户端"。
 	 * 
 	 * @param key
 	 * @return
@@ -142,7 +142,7 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取给定的键所映射的"节点分片信息"。
+	 * 获取给定的键所映射的"Redis节点分片信息"。
 	 * 
 	 * @param key
 	 *            键
@@ -153,14 +153,14 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取给定的键所映射的"节点分片信息"。
+	 * 获取给定的键所映射的"Redis节点分片信息"。
 	 * 
 	 * @param key
 	 * @return
 	 */
 	public S getShardInfo(byte[] key) {
 		SortedMap<Long, S> tail = nodes.tailMap(algo.hash(key));
-		if (tail.isEmpty()) { // 当定位到末尾节点时，则循环使用第一个节点（构成一个环形）
+		if (tail.isEmpty()) { // 当未定位到节点时，则循环使用第一个节点（构成一个圆形，一致性哈希算法的特性）
 			return nodes.get(nodes.firstKey());
 		}
 		return tail.get(tail.firstKey());
