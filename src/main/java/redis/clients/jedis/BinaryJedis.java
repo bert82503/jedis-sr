@@ -113,6 +113,16 @@ public class BinaryJedis implements BasicCommands, BinaryJedisCommands,
 	}
 
 	/**
+	 * 重置"Redis客户端"的状态，会与Redis服务器交互一次。
+	 */
+	public void resetState() {
+		if (client.isConnected()) { // 保证链接是正常的
+			client.resetState(); // 会与Redis服务器交互一次
+			client.getAll();
+		}
+	}
+
+	/**
 	 * 断开到Redis客户端的连接。
 	 */
 	public void disconnect() {
@@ -1862,16 +1872,6 @@ public class BinaryJedis implements BasicCommands, BinaryJedisCommands,
 	public String unwatch() {
 		client.unwatch();
 		return client.getStatusCodeReply();
-	}
-
-	/**
-	 * 重置"Redis客户端"的状态。
-	 */
-	public void resetState() {
-		if (client.isConnected()) {
-			client.resetState();
-			client.getAll();
-		}
 	}
 
 	/**

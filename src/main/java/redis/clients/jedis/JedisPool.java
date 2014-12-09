@@ -9,7 +9,7 @@ import redis.clients.util.JedisURIHelper;
 import redis.clients.util.Pool;
 
 /**
- * "Jedis连接池(Pool<Jedis>)"实现。
+ * "Jedis连接池"实现，继承自{@link Pool<Jedis>}。
  * 
  * @author huagang.li 2014年12月9日 下午8:03:48
  */

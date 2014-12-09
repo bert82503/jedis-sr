@@ -20,7 +20,7 @@ public class ShardedJedis extends BinaryShardedJedis implements JedisCommands,
 		Closeable {
 
 	/** "分片的Jedis连接池"数据源 */
-	protected Pool<ShardedJedis> dataSource = null;
+	protected Pool<ShardedJedis> dataSource;
 
 	public ShardedJedis(List<JedisShardInfo> shards) {
 		super(shards);
@@ -64,25 +64,26 @@ public class ShardedJedis extends BinaryShardedJedis implements JedisCommands,
 	 */
 	@Override
 	public void close() {
-		if (dataSource != null) {
+		if (dataSource != null) { // 分片集群模式
+			// 检测该Jedis分片池对象是否正常
 			boolean broken = false;
-
 			for (Jedis jedis : super.getAllShards()) {
-				if (jedis.getClient().isBroken()) { // Redis客户端是否有出现异常了
+				if (jedis.getClient().isBroken()) { // Jedis分片客户端是否存在异常链接
 					broken = true;
 					// Bug 找到一个就不用再接着继续执行了
 					break;
 				}
 			}
-
+			// 根据"该Jedis分片池的正常状态"来返回给连接池
 			if (broken) {
 				dataSource.returnBrokenResource(this);
-			} else {
+			} else { // 节点应该是正常的
 				this.resetState();
 				dataSource.returnResource(this);
 			}
 
-		} else {
+		} else { // 单机模式
+			// 关闭该Jedis客户端持有的所有链接（这样使用不会出现内存泄露问题！）
 			this.disconnect();
 		}
 	}
@@ -91,8 +92,9 @@ public class ShardedJedis extends BinaryShardedJedis implements JedisCommands,
 	 * 重置该集群所拥有的所有"Redis客户端"的状态。
 	 */
 	public void resetState() {
+		// 集群节点数越多，越耗时！
 		for (Jedis jedis : super.getAllShards()) {
-			jedis.resetState();
+			jedis.resetState(); // 会与Redis服务器交互一次
 		}
 	}
 

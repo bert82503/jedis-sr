@@ -42,9 +42,6 @@ public class Connection implements Closeable {
 	/** 已进入管道的命令计数器 */
 	private int pipelinedCommands = 0;
 
-	public Connection() {
-	}
-
 	/**
 	 * 创建一条新的Redis链接。
 	 * 
@@ -108,6 +105,34 @@ public class Connection implements Closeable {
 				inputStream = new RedisInputStream(socket.getInputStream());
 			} catch (IOException ex) {
 				// 创建新的套接字时，发生了异常
+				broken = true;
+				throw new JedisConnectionException(ex);
+			}
+		}
+	}
+
+	/**
+	 * 关闭到Redis服务器的链接，包括输入流、输出流和套接字。
+	 */
+	@Override
+	public void close() {
+		this.disconnect();
+	}
+
+	/**
+	 * 断开Redis客户端到服务器的链接，包括输入流、输出流和套接字。
+	 */
+	public void disconnect() {
+		if (this.isConnected()) { // 链接还打开着
+			// 按顺序依次关闭/释放"输入流、输出流、套接字"资源
+			try {
+				inputStream.close();
+				outputStream.close();
+				if (!socket.isClosed()) {
+					socket.close();
+				}
+			} catch (IOException ex) {
+				// 关闭链接时，发生异常
 				broken = true;
 				throw new JedisConnectionException(ex);
 			}
@@ -316,34 +341,6 @@ public class Connection implements Closeable {
 		this.flush();
 		pipelinedCommands--;
 		return this.readProtocolWithCheckingBroken();
-	}
-
-	/**
-	 * 关闭到Redis服务器的链接，包括输入流、输出流和套接字。
-	 */
-	@Override
-	public void close() {
-		this.disconnect();
-	}
-
-	/**
-	 * 断开到Redis服务器的链接，包括输入流、输出流和套接字。
-	 */
-	public void disconnect() {
-		if (this.isConnected()) { // 链接还打开着
-			// 按顺序依次关闭/释放"输入流、输出流、套接字"资源
-			try {
-				inputStream.close();
-				outputStream.close();
-				if (!socket.isClosed()) {
-					socket.close();
-				}
-			} catch (IOException ex) {
-				// 关闭链接时，发生异常
-				broken = true;
-				throw new JedisConnectionException(ex);
-			}
-		}
 	}
 
 	/**

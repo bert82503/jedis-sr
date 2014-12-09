@@ -69,17 +69,18 @@ public class Jedis extends BinaryJedis implements JedisCommands,
 	}
 
 	/**
-	 * 当使用"Jedis连接池"时，将"Redis客户端链接"返回给"Jedis连接池"； 否则，直接关闭Redis客户端的连接。
+	 * 当使用"Jedis连接池"时，将"Redis客户端链接"返回给"Jedis连接池"； 
+	 * 否则，直接关闭Redis客户端的连接。
 	 */
 	@Override
 	public void close() {
-		if (dataSource != null) {
-			if (client.isBroken()) { // Redis链接被阻塞了
+		if (dataSource != null) { // 分片集群模式
+			if (client.isBroken()) { // Redis链接是否有异常
 				this.dataSource.returnBrokenResource(this);
 			} else {
 				this.dataSource.returnResource(this);
 			}
-		} else {
+		} else { // 单机模式
 			client.close();
 		}
 	}

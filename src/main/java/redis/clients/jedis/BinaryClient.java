@@ -101,19 +101,19 @@ public class BinaryClient extends Connection {
 		}
 	}
 
-	@Override
-	public void disconnect() {
-		db = 0;
-		super.disconnect();
-	}
-
 	/**
-	 * 关闭Redis客户端到服务器的连接。
+	 * 关闭Redis客户端到服务器的链接。
 	 */
 	@Override
 	public void close() {
 		db = 0;
 		super.close();
+	}
+
+	@Override
+	public void disconnect() {
+		db = 0;
+		super.disconnect();
 	}
 
 	/**
