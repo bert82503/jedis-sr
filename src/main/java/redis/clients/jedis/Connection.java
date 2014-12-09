@@ -66,7 +66,7 @@ public class Connection implements Closeable {
 	}
 
 	/**
-	 * 检测套接字链接是否还连接着。
+	 * 检测套接字(socket)链接是否还连接着。
 	 * 
 	 * @return
 	 */
@@ -93,11 +93,10 @@ public class Connection implements Closeable {
 				socket.setReuseAddress(true);
 				// Will monitor the TCP connection is valid (使用长连接技术)
 				socket.setKeepAlive(true);
-				// Socket buffer Whether closed, to ensure timely delivery of
-				// data (确保数据实时发送)
+				// Socket buffer Whether closed, to ensure timely delivery of data (确保数据实时发送)
 				socket.setTcpNoDelay(true);
-				// Control calls close() method, the underlying socket is
-				// closed immediately (即使背后的套接字被瞬间关闭，也确保close()被调用)
+				// Control calls close() method, the underlying socket is closed immediately
+				// (即使背后的套接字被瞬间关闭，也确保close()被调用)
 				socket.setSoLinger(true, 0);
 
 				// 创建一条新的连接到后端Redis服务器的链接
@@ -108,6 +107,7 @@ public class Connection implements Closeable {
 				outputStream = new RedisOutputStream(socket.getOutputStream());
 				inputStream = new RedisInputStream(socket.getInputStream());
 			} catch (IOException ex) {
+				// 创建新的套接字时，发生了异常
 				broken = true;
 				throw new JedisConnectionException(ex);
 			}
@@ -155,6 +155,7 @@ public class Connection implements Closeable {
 			return this;
 		} catch (JedisConnectionException ex) {
 			// Any other exceptions related to connection?
+			// "输出流"连接异常
 			broken = true;
 			throw ex;
 		}
@@ -168,48 +169,18 @@ public class Connection implements Closeable {
 	}
 
 	/**
-	 * 关闭到Redis服务器的连接。
+	 * 读取Redis命令执行的响应信息。
+	 * <p>
+	 * 基于{@link Protocol#read(RedisInputStream)}实现
 	 */
-	@Override
-	public void close() {
-		this.disconnect();
-	}
-
-	/**
-	 * 断开到Redis服务器的连接。
-	 */
-	public void disconnect() {
-		if (this.isConnected()) {
-			// 按顺序依次关闭 输入流、输出流、套接字（释放资源）
-			try {
-				inputStream.close();
-				outputStream.close();
-				if (!socket.isClosed()) {
-					socket.close();
-				}
-			} catch (IOException ex) {
-				broken = true;
-				throw new JedisConnectionException(ex);
-			}
+	protected Object readProtocolWithCheckingBroken() {
+		try {
+			return Protocol.read(inputStream);
+		} catch (JedisConnectionException exc) {
+			// "输入流"被关闭了
+			broken = true;
+			throw exc;
 		}
-	}
-
-	/**
-	 * 返回链接套接字。
-	 */
-	public Socket getSocket() {
-		return socket;
-	}
-
-	/**
-	 * 链接是否出现异常了。
-	 */
-	public boolean isBroken() {
-		return broken;
-	}
-
-	public void resetPipelinedCount() {
-		pipelinedCommands = 0;
 	}
 
 	/**
@@ -219,27 +190,14 @@ public class Connection implements Closeable {
 		try {
 			outputStream.flush();
 		} catch (IOException ex) {
+			// "输出流"被关闭了
 			broken = true;
 			throw new JedisConnectionException(ex);
 		}
 	}
 
 	/**
-	 * 读取命令执行的响应信息。
-	 * <p>
-	 * 基于{@link Protocol#read(RedisInputStream)}实现
-	 */
-	protected Object readProtocolWithCheckingBroken() {
-		try {
-			return Protocol.read(inputStream);
-		} catch (JedisConnectionException exc) {
-			broken = true;
-			throw exc;
-		}
-	}
-
-	/**
-	 * 获取请求的响应状态码。
+	 * 获取命令请求的响应状态码。
 	 */
 	protected String getStatusCodeReply() {
 		this.flush();
@@ -358,6 +316,52 @@ public class Connection implements Closeable {
 		this.flush();
 		pipelinedCommands--;
 		return this.readProtocolWithCheckingBroken();
+	}
+
+	/**
+	 * 关闭到Redis服务器的链接，包括输入流、输出流和套接字。
+	 */
+	@Override
+	public void close() {
+		this.disconnect();
+	}
+
+	/**
+	 * 断开到Redis服务器的链接，包括输入流、输出流和套接字。
+	 */
+	public void disconnect() {
+		if (this.isConnected()) { // 链接还打开着
+			// 按顺序依次关闭/释放"输入流、输出流、套接字"资源
+			try {
+				inputStream.close();
+				outputStream.close();
+				if (!socket.isClosed()) {
+					socket.close();
+				}
+			} catch (IOException ex) {
+				// 关闭链接时，发生异常
+				broken = true;
+				throw new JedisConnectionException(ex);
+			}
+		}
+	}
+
+	/**
+	 * 返回链接套接字。
+	 */
+	public Socket getSocket() {
+		return socket;
+	}
+
+	/**
+	 * 链接是否出现异常了。
+	 */
+	public boolean isBroken() {
+		return broken;
+	}
+
+	public void resetPipelinedCount() {
+		pipelinedCommands = 0;
 	}
 
 	public String getHost() {

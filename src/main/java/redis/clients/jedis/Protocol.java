@@ -119,10 +119,8 @@ public final class Protocol {
 
 	private static void sendCommand(RedisOutputStream os, byte[] command,
 			byte[]... args) {
-		/*
-		 * 构造"Redis二进制协议"格式内容
-		 */
 		try {
+			// 构造"Redis二进制协议"格式内容
 			os.write(ASTERISK_BYTE);
 			os.writeIntCrLf(args.length + 1);
 			os.write(DOLLAR_BYTE);
@@ -216,7 +214,7 @@ public final class Protocol {
 	}
 
 	/*
-	 * 处理请求返回状态码。
+	 * 处理请求响应的状态码。
 	 */
 	private static byte[] processStatusCodeReply(RedisInputStream is) {
 		return SafeEncoder.encode(is.readLine());
@@ -231,6 +229,7 @@ public final class Protocol {
 			return null;
 		}
 		byte[] read = new byte[len];
+		
 		int offset = 0;
 		try {
 			while (offset < len) {
@@ -240,7 +239,7 @@ public final class Protocol {
 							"It seems like server has closed the connection.");
 				offset += size;
 			}
-			// read 2 more bytes for the command delimiter
+			// read 2 more bytes for the command delimiter (命令分隔符)
 			is.readByte();
 			is.readByte();
 		} catch (IOException e) {
@@ -259,7 +258,7 @@ public final class Protocol {
 	}
 
 	/*
-	 * 处理多个命令的响应内容。
+	 * 处理多条命令的批量响应内容。
 	 */
 	private static List<Object> processMultiBulkReply(RedisInputStream is) {
 		int num = Integer.parseInt(is.readLine());
@@ -269,9 +268,9 @@ public final class Protocol {
 		List<Object> ret = new ArrayList<Object>(num);
 		for (int i = 0; i < num; i++) {
 			try {
-				ret.add(process(is)); // 迭代解析命令的响应内容
+				ret.add(process(is)); // 递归地解析命令的响应内容
 			} catch (JedisDataException e) {
-				// Bug 怎么把异常返回数据也添加到返回信息里去了？？？
+				// Bug 怎么把异常返回的数据也添加到返回信息里去了？？？
 				ret.add(e);
 			}
 		}
@@ -279,7 +278,7 @@ public final class Protocol {
 	}
 
 	/**
-	 * 读取命令执行的响应信息。
+	 * 读取Redis命令执行的响应信息。
 	 * 
 	 * @param is
 	 * @return
