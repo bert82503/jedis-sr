@@ -37,7 +37,7 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	private NavigableMap<Long, S> nodes;
 	/** (一致性)哈希算法 */
 	private final Hashing algo;
-	/** 分片节点到真实节点链接资源的映射表(<ShardInfo<R>, R>) */
+	/** 分片节点到真实节点客户端的映射表(<ShardInfo<R>, R>) */
 	private final Map<S, R> resources = new LinkedHashMap<S, R>();
 
 	/**
@@ -81,8 +81,8 @@ public class Sharded<R, S extends ShardInfo<R>> {
 		this.initialize(shards);
 	}
 
-	/*
-	 * [核心] 初始化集群信息。
+	/**
+	 * [核心] 初始化"分片集群信息"。
 	 */
 	private void initialize(List<S> shards) {
 		nodes = new TreeMap<Long, S>();
@@ -91,30 +91,38 @@ public class Sharded<R, S extends ShardInfo<R>> {
 		for (int i = 0; i < size; ++i) {
 			S shardInfo = shards.get(i);
 			
-			// 一致性哈希算法
+			// 一致性哈希算法（虚拟节点hash值 -> 分片节点）
 			int weight = 160 * shardInfo.getWeight(); // 放大160倍
 			if (shardInfo.getName() == null) {
 				for (int n = 0; n < weight; n++) {
-					// 构造默认分片名称，并进行哈希计算
+					// 1. "SHARD-" + i + "-NODE-" + n
 					// 大坑：将节点的顺序索引i作为hash的一部分！
-					// 当节点顺序被无意识地调整了，那就杯具啦！
+					// 当节点的顺序被无意识地调整了，会触发rehash，那就杯具了！（"因节点顺序调整而引发rehash"的问题）
 					long hash = algo.hash("SHARD-" + i + "-NODE-" + n);
 					nodes.put(Long.valueOf(hash), shardInfo);
 				}
 			} else {
 				for (int n = 0; n < weight; n++) {
-					// 根据自定义的分片名称和权重来构造分片名称，并进行哈希计算
+					// 2. shardInfo.getName() + "*" + shardInfo.getWeight() + n
 					// 坑："节点名称+权重"必须是唯一的，否则节点会出现重叠覆盖！
-					// 同时，"节点名称+权重"必须不能被中途改变！
-					// 这样设计避免了"因节点顺序调整而引发rehash"的问题
+					// 同时，"节点名称+权重"不能被中途改变！
+					// 【优点】这样设计避免了上面"因节点顺序调整而引发rehash"的问题
 					long hash = algo.hash(shardInfo.getName() + "*"
 							+ shardInfo.getWeight() + n);
 					nodes.put(Long.valueOf(hash), shardInfo);
 				}
 			}
-			// 较好地hash策略是：唯一节点名称+编号
-			// long hash = algo.hash(shardInfo.getName() + "*" + n);
+			// 3. 节点IP:端口号+编号
+			// "节点IP:端口号"不能被中途改变，不然会触发rehash！
+			// 因机房迁移等原因，可能导致节点IP发生改变！
+			// Memcached Java Client，就是使用这个策略。（https://github.com/gwhalin/Memcached-Java-Client）
+			
+			// 4. 唯一节点名称+编号（shardInfo.getName() + "*" + n）
+			// 较好地一致性hash策略是：唯一节点名称+编号，不要考虑权重因素！
+			// 【案例】Java的 Executors.DefaultThreadFactory 和 Tomcat的 TaskThreadFactory，
+			// 都是使用"namePrefix + threadNumber.getAndIncrement()"规则来命名线程名称。
 
+			// 分片节点 -> 真实节点客户端
 			R resource = shardInfo.createResource();
 			resources.put(shardInfo, resource);
 		}
