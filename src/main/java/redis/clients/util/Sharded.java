@@ -195,7 +195,7 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取所有的"节点客户端"资源列表。
+	 * 获取该集群的所有"连接到Redis服务器的链接"资源列表。
 	 * 
 	 * @return
 	 */
