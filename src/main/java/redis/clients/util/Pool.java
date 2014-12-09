@@ -49,7 +49,7 @@ public abstract class Pool<R> implements Closeable {
 	 */
 	public void initPool(GenericObjectPoolConfig poolConfig,
 			PooledObjectFactory<R> factory) {
-		// 若原有的连接池资源未释放，则先关闭
+		// 若原有的连接池资源未被释放，则先关闭
 		if (this.internalPool != null) {
 			try {
 				this.closeInternalPool();
@@ -67,7 +67,7 @@ public abstract class Pool<R> implements Closeable {
 		try {
 			return internalPool.borrowObject();
 		} catch (Exception e) {
-			// 抛出"无法从连接池中获取到一个资源"异常
+			// 抛出"无法从连接池中获取到一个资源"的异常
 			throw new JedisConnectionException(
 					"Could not get a resource from the pool", e);
 		}
@@ -96,10 +96,10 @@ public abstract class Pool<R> implements Closeable {
 		}
 
 		try {
-			// 会在getTestOnReturn()时，校验资源的有效性
+			// 会在getTestOnReturn()打开时，校验资源的有效性
 			internalPool.returnObject(resource);
 		} catch (Exception e) {
-			// 抛出"无法将这个资源返回给连接池"异常
+			// 抛出"无法将这个资源返回给连接池"的异常
 			throw new JedisException(
 					"Could not return the resource to the pool", e);
 		}
@@ -118,15 +118,16 @@ public abstract class Pool<R> implements Closeable {
 	}
 
 	/**
-	 * 将阻塞的资源返回给"连接池"。
+	 * 将出现异常的资源返回给"连接池"。
 	 * 
 	 * @param resource
 	 */
 	protected void returnBrokenResourceObject(R resource) {
 		try {
-			// 销毁连接池中的这个资源对象
+			// 销毁连接池中的这个资源池对象
 			internalPool.invalidateObject(resource);
 		} catch (Exception e) {
+			// 抛出"无法将这个异常的资源返回给连接池"的异常
 			throw new JedisException(
 					"Could not return the broken resource to the pool", e);
 		}
