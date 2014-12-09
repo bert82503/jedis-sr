@@ -121,17 +121,24 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取给定的键所映射的"节点分片信息"。
+	 * 获取给定的键所映射的"Jedis节点客户端"。
+	 * 
+	 * @param key
+	 *            键
+	 * @return
+	 */
+	public R getShard(String key) {
+		return resources.get(this.getShardInfo(key));
+	}
+
+	/**
+	 * 获取给定的键所映射的"Jedis节点客户端"。
 	 * 
 	 * @param key
 	 * @return
 	 */
-	public S getShardInfo(byte[] key) {
-		SortedMap<Long, S> tail = nodes.tailMap(algo.hash(key));
-		if (tail.isEmpty()) { // 当定位到末尾节点时，则循环使用第一个节点（构成一个环形）
-			return nodes.get(nodes.firstKey());
-		}
-		return tail.get(tail.firstKey());
+	public R getShard(byte[] key) {
+		return resources.get(this.getShardInfo(key));
 	}
 
 	/**
@@ -146,24 +153,17 @@ public class Sharded<R, S extends ShardInfo<R>> {
 	}
 
 	/**
-	 * 获取给定的键所映射的"节点客户端"资源。
+	 * 获取给定的键所映射的"节点分片信息"。
 	 * 
 	 * @param key
 	 * @return
 	 */
-	public R getShard(byte[] key) {
-		return resources.get(this.getShardInfo(key));
-	}
-
-	/**
-	 * 获取给定的键所映射的"节点客户端"资源。
-	 * 
-	 * @param key
-	 *            键
-	 * @return
-	 */
-	public R getShard(String key) {
-		return resources.get(this.getShardInfo(key));
+	public S getShardInfo(byte[] key) {
+		SortedMap<Long, S> tail = nodes.tailMap(algo.hash(key));
+		if (tail.isEmpty()) { // 当定位到末尾节点时，则循环使用第一个节点（构成一个环形）
+			return nodes.get(nodes.firstKey());
+		}
+		return tail.get(tail.firstKey());
 	}
 
 	/**
