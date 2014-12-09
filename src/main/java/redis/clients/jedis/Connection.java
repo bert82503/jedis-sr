@@ -42,6 +42,11 @@ public class Connection implements Closeable {
 	/** 已进入管道的命令计数器 */
 	private int pipelinedCommands = 0;
 
+	//
+	// ----------
+	public Connection() {
+	}
+
 	/**
 	 * 创建一条新的Redis链接。
 	 * 
