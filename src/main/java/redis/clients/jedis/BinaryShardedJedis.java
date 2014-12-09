@@ -46,7 +46,7 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 	}
 
 	/**
-	 * 断开整个集群所拥有的所有"Jedis客户端"资源。
+	 * 断开整个集群所拥有的所有"Jedis客户端"链接。
 	 * 
 	 * <pre>
 	 * 释放一个"Jedis客户端"资源，分2个步骤：
@@ -55,18 +55,23 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 	 * </pre>
 	 */
 	public void disconnect() {
+		// FIXME 注意：若中间一台Redis节点宕机了，后面节点的链接都无法被释放，可能引起内存泄露！
 		for (Jedis jedis : super.getAllShards()) {
-			// 请求服务端关闭连接
-			jedis.quit();
-			// 客户端主动关闭连接
-			jedis.disconnect();
+			try {
+				// 请求服务端关闭连接
+				jedis.quit();
+				// 客户端主动关闭连接
+				jedis.disconnect();
+			} catch (Exception e) {
+				// ignore the exception node 
+			}
 		}
 	}
 
 	// 应该由Sharded统一创建和管理
-	// protected Jedis create(JedisShardInfo shard) {
-	// return new Jedis(shard);
-	// }
+//	protected Jedis create(JedisShardInfo shard) {
+//		return new Jedis(shard);
+//	}
 
 	@Override
 	public String set(byte[] key, byte[] value) {
