@@ -99,38 +99,40 @@ public class BinaryJedis implements BasicCommands, BinaryJedisCommands,
 	}
 
 	/**
-	 * 检测客户端是否还连接着。
+	 * 检测"Redis客户端"是否还连接着。
 	 */
 	public boolean isConnected() {
 		return client.isConnected();
 	}
 
 	/**
-	 * 连接到Redis客户端。
+	 * 连接到"Redis客户端"。
 	 */
 	public void connect() {
 		client.connect();
 	}
 
 	/**
-	 * 重置"Redis客户端"的状态，会与Redis服务器交互一次。
+	 * 重置"Redis客户端"的状态。
+	 * <p>
+	 * <font color="red">注意：</font>仅当使用"事务命令"时，才会与Redis服务器交互一次；其它命令，都不会与Redis服务器交互一次！
 	 */
 	public void resetState() {
 		if (client.isConnected()) { // 保证链接是正常的
-			client.resetState(); // 会与Redis服务器交互一次
+			client.resetState(); // 只有在使用"事务命令"时，才会与Redis服务器交互一次
 			client.getAll();
 		}
 	}
 
 	/**
-	 * 断开到Redis客户端的连接。
+	 * 断开到"Redis客户端"的连接。
 	 */
 	public void disconnect() {
 		client.disconnect();
 	}
 
 	/**
-	 * 关闭Redis客户端的连接。
+	 * 关闭"Redis客户端"的连接。
 	 */
 	@Override
 	public void close() {
@@ -138,7 +140,7 @@ public class BinaryJedis implements BasicCommands, BinaryJedisCommands,
 	}
 
 	/**
-	 * 检测是否需要"事务"命令来执行。
+	 * 检测是否需要"事务命令"来执行。
 	 */
 	protected void checkIsInMulti() {
 		if (client.isInMulti()) {

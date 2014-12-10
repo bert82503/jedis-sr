@@ -90,11 +90,17 @@ public class ShardedJedis extends BinaryShardedJedis implements JedisCommands,
 
 	/**
 	 * 重置该集群所拥有的所有"Redis客户端"的状态。
+	 * <p>
+	 * <pre>
+	 * <font color="red">[Q] Redis集群节点数越多，这个方法越耗时吗？</font>
+	 * 	经调试验证，集群中的所有Redis服务器的链接都打开着，每次都会对所有链接轮询一次。
+	 * 	但只有被命中的那条Redis链接在执行"事务命令"时，才会与Redis服务器交互一次；在执行其它命令时，是不会与Redis服务器交互的。
+	 * <font color="red">[A] 不管整个Redis集群节点数有多少个，这个方法的耗时都是收敛稳定的，性能影响微乎其微。</font>
+	 * </pre>
 	 */
 	public void resetState() {
-		// 集群节点数越多，越耗时！
 		for (Jedis jedis : super.getAllShards()) {
-			jedis.resetState(); // 会与Redis服务器交互一次
+			jedis.resetState();
 		}
 	}
 
