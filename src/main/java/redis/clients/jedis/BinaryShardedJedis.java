@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import redis.clients.jedis.BinaryClient.LIST_POSITION;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.util.Hashing;
 import redis.clients.util.Sharded;
 
@@ -62,13 +63,13 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 				// 注意：读取QUIT命令的响应信息时，抛JedisConnectionException异常，但客户端的socket还是没有关闭的！
 				// 所以，必须捕获这里的异常，然后再执行下面的"关闭连接"的动作。
 				jedis.quit();
-			} catch (Exception e) {
+			} catch (JedisConnectionException e) {
 				// ignore the exception node, so that all other normal nodes can release all connections.
 			}
 		    try {
 		    	// 客户端主动关闭连接
 				jedis.disconnect();
-			} catch (Exception e) {
+			} catch (JedisConnectionException e) {
 				// ignore the exception node, so that all other normal nodes can release all connections.
 			}
 		}
