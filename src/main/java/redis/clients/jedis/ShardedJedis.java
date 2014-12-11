@@ -77,7 +77,7 @@ public class ShardedJedis extends BinaryShardedJedis implements JedisCommands,
 			// 根据"该Jedis分片池的正常状态"来返回给连接池
 			if (broken) {
 				dataSource.returnBrokenResource(this);
-			} else { // 节点应该是正常的
+			} else { // 集群是正常的
 				this.resetState();
 				dataSource.returnResource(this);
 			}

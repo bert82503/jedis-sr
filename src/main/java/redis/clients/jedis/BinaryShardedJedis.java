@@ -55,15 +55,21 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 	 * </pre>
 	 */
 	public void disconnect() {
-		// FIXME 注意：若中间一台Redis节点宕机了，后面节点的链接都无法被释放，可能引起内存泄露！
+		// FIXME 现象：若中间一台Redis节点宕机了，后面节点的链接都无法被释放，可能引起内存泄露！
 		for (Jedis jedis : super.getAllShards()) {
 			try {
 				// 请求服务端关闭连接
+				// 注意：读取QUIT命令的响应信息时，抛JedisConnectionException异常，但客户端的socket还是没有关闭的！
+				// 所以，必须捕获这里的异常，然后再执行下面的"关闭连接"的动作。
 				jedis.quit();
-				// 客户端主动关闭连接
+			} catch (Exception e) {
+				// ignore the exception node, so that all other normal nodes can release all connections.
+			}
+		    try {
+		    	// 客户端主动关闭连接
 				jedis.disconnect();
 			} catch (Exception e) {
-				// ignore the exception node 
+				// ignore the exception node, so that all other normal nodes can release all connections.
 			}
 		}
 	}
