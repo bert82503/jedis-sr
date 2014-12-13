@@ -60,7 +60,7 @@ public class BinaryShardedJedis extends Sharded<Jedis, JedisShardInfo>
 		for (Jedis jedis : super.getAllShards()) {
 			try {
 				// 请求服务端关闭连接
-				// 注意：读取QUIT命令的响应信息时，抛JedisConnectionException异常，但客户端的socket还是没有关闭的！
+				// 注意：在服务端socket关闭后，读取QUIT命令的响应信息时，会抛JedisConnectionException异常，但客户端socket还是打开着！
 				// 所以，必须捕获这里的异常，然后再执行下面的"关闭连接"的动作。
 				jedis.quit();
 			} catch (JedisConnectionException e) {
