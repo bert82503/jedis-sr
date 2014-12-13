@@ -30,7 +30,7 @@ public class ShardedJedisTest extends Assert {
      * @throws InterruptedException
      */
     @Test
-	public void testAvoidLeaksUponDisconnect() throws InterruptedException {
+    public void testAvoidLeaksUponDisconnect() throws InterruptedException {
     	List<JedisShardInfo> shards = new ArrayList<JedisShardInfo>(2);
     	// 6379 node
 		JedisShardInfo shard1 = new JedisShardInfo(redis1.getHost(), redis1.getPort());
@@ -42,61 +42,45 @@ public class ShardedJedisTest extends Assert {
 		shards.add(shard2);
 		
 		ShardedJedis shardedJedis = new ShardedJedis(shards);
-		// establish the connection for two redis servers
-		shardedJedis.set("a", "bar");
-		JedisShardInfo ak = shardedJedis.getShardInfo("a");
-		assertEquals(shard2, ak);
-		shardedJedis.set("b", "bar1");
-		JedisShardInfo bk = shardedJedis.getShardInfo("b");
-		assertEquals(shard1, bk);
-		
-		//We set a name to the instance so it's easy to find it
-		Iterator<Jedis> it = shardedJedis.getAllShards().iterator();
-		Jedis deadClient = it.next();
-		deadClient.clientSetname("DEAD");
-		
-		// CLIENT LIST (多了name字段): "id=4 addr=127.0.0.1:50946 fd=6 name=DEAD age=0 idle=0 flags=N db=0 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=32768 obl=0 oll=0 omem=0 events=r cmd=client"
-        for (String clientInfo : deadClient.clientList().split("\n")) { // CLIENT LIST - http://redis.io/commands/client-list
+        // establish the connection for two redis servers
+        shardedJedis.set("a", "bar");
+        JedisShardInfo ak = shardedJedis.getShardInfo("a");
+        assertEquals(shard2, ak);
+        shardedJedis.set("b", "bar1");
+        JedisShardInfo bk = shardedJedis.getShardInfo("b");
+        assertEquals(shard1, bk);
+
+        // We set a name to the instance so it's easy to find it
+        Iterator<Jedis> it = shardedJedis.getAllShards().iterator();
+        Jedis deadClient = it.next();
+        deadClient.clientSetname("DEAD");
+        
+        for (String clientInfo : deadClient.clientList().split("\n")) {
             if (clientInfo.contains("DEAD")) {
                 for (String field : clientInfo.split(" ")) {
                     if (field.contains("addr")) {
                         // Ugly, but cmon, it's a test.
                         String[] hostAndPort = field.split("=")[1].split(":");
                         // It would be better if we kill the client by Id (CLIENT KILL ID client-id) as it's safer but jedis doesn't implement the command yet.
-                        deadClient.clientKill(hostAndPort[0] + ":" + hostAndPort[1]); // CLIENT KILL - http://redis.io/commands/client-kill
+                        deadClient.clientKill(hostAndPort[0] + ":" + hostAndPort[1]);
                     }
                 }
             }
         }
-		assertEquals(true, deadClient.isConnected());
-		assertEquals(false, deadClient.getClient().getSocket().isClosed());
-		assertEquals(false, deadClient.getClient().isBroken()); // normal - not found
-		
-		// test for original impl
-//		try {
-//            shardedJedis.close();
-//        } catch (Exception e) {
-//            // ignore exception
-//        }
-//        // the two socket connections are all not closed
-//        assertEquals(true, deadClient.isConnected());
-//        assertEquals(false, deadClient.getClient().getSocket().isClosed());
-//        assertEquals(true, deadClient.getClient().isBroken()); // exception found
-//        Jedis jedis2 = it.next();
-//        assertEquals(true, jedis2.isConnected());
-//        assertEquals(false, jedis2.getClient().getSocket().isClosed());
-//        assertEquals(false, jedis2.getClient().isBroken());
-		
-		// test for new impl
-		shardedJedis.close();
-		// the two socket connections are all not closed
-		assertEquals(false, deadClient.isConnected());
-		assertEquals(true, deadClient.getClient().getSocket().isClosed());
-		assertEquals(true, deadClient.getClient().isBroken()); // exception found
-		Jedis jedis2 = it.next();
-		assertEquals(false, jedis2.isConnected());
-		assertEquals(true, jedis2.getClient().getSocket().isClosed());
-		assertEquals(false, jedis2.getClient().isBroken());
+        assertEquals(true, deadClient.isConnected());
+        assertEquals(false, deadClient.getClient().getSocket().isClosed());
+        assertEquals(false, deadClient.getClient().isBroken()); // normal - not found
+        
+        shardedJedis.close(); // will call disconnect()
+        
+        // the two socket connections are all closed normally
+        assertEquals(false, deadClient.isConnected());
+        assertEquals(true, deadClient.getClient().getSocket().isClosed());
+        assertEquals(true, deadClient.getClient().isBroken()); // exception - found
+        Jedis jedis2 = it.next();
+        assertEquals(false, jedis2.isConnected());
+        assertEquals(true, jedis2.getClient().getSocket().isClosed());
+        assertEquals(false, jedis2.getClient().isBroken());
 	}
     
     private List<String> getKeysDifferentShard(ShardedJedis jedis) {
