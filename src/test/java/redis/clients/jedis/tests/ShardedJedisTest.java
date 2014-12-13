@@ -53,20 +53,9 @@ public class ShardedJedisTest extends Assert {
         // We set a name to the instance so it's easy to find it
         Iterator<Jedis> it = shardedJedis.getAllShards().iterator();
         Jedis deadClient = it.next();
-        deadClient.clientSetname("DEAD");
+        // closes a given client connection
+        clientKill(deadClient);
         
-        for (String clientInfo : deadClient.clientList().split("\n")) {
-            if (clientInfo.contains("DEAD")) {
-                for (String field : clientInfo.split(" ")) {
-                    if (field.contains("addr")) {
-                        // Ugly, but cmon, it's a test.
-                        String[] hostAndPort = field.split("=")[1].split(":");
-                        // It would be better if we kill the client by Id (CLIENT KILL ID client-id) as it's safer but jedis doesn't implement the command yet.
-                        deadClient.clientKill(hostAndPort[0] + ":" + hostAndPort[1]);
-                    }
-                }
-            }
-        }
         assertEquals(true, deadClient.isConnected());
         assertEquals(false, deadClient.getClient().getSocket().isClosed());
         assertEquals(false, deadClient.getClient().isBroken()); // normal - not found
@@ -82,6 +71,31 @@ public class ShardedJedisTest extends Assert {
         assertEquals(true, jedis2.getClient().getSocket().isClosed());
         assertEquals(false, jedis2.getClient().isBroken());
 	}
+    
+    /**
+     * 关闭一个给定的客户端连接。
+     * 
+     * @param jedis
+     */
+    private static void clientKill(Jedis jedis) {
+        jedis.clientSetname("DEAD");
+        
+        // CLIENT LIST (返回连接到这台服务器的所有客户端的信息和统计数据) - http://redis.io/commands/client-list
+        // CLIENT LIST (多了name字段): "id=4 addr=127.0.0.1:50946 fd=6 name=DEAD age=0 idle=0 flags=N db=0 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=32768 obl=0 oll=0 omem=0 events=r cmd=client"
+        for (String clientInfo : jedis.clientList().split("\n")) {
+            if (clientInfo.contains("DEAD")) {
+                for (String field : clientInfo.split(" ")) {
+                    if (field.contains("addr")) {
+                        // Ugly, but cmon, it's a test.
+                        String[] hostAndPort = field.split("=")[1].split(":");
+                        // It would be better if we kill the client by Id (CLIENT KILL ID client-id) as it's safer but jedis doesn't implement the command yet.
+                        // CLIENT KILL (关闭一个给定的客户端连接) - http://redis.io/commands/client-kill
+                        jedis.clientKill(hostAndPort[0] + ":" + hostAndPort[1]);
+                    }
+                }
+            }
+        }
+    }
     
     private List<String> getKeysDifferentShard(ShardedJedis jedis) {
 	List<String> ret = new ArrayList<String>();
