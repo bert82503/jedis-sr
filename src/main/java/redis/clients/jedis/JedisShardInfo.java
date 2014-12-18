@@ -12,7 +12,7 @@ import redis.clients.util.Sharded;
  */
 public class JedisShardInfo extends ShardInfo<Jedis> {
 
-	/** 主机名称/IP */
+	/** 主机域名/IP */
 	private String host;
 
 	/** 端口号 */

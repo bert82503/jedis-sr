@@ -50,21 +50,42 @@
 	</properties>
 
 	<dependencies>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.11</version>
-			<type>jar</type>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-pool2</artifactId>
-			<version>2.0</version>
-			<type>jar</type>
-			<scope>compile</scope>
-		</dependency>
-	</dependencies>
+	<!-- ======================================= -->
+	<!-- Apache Commons 框架 -->
+	<!-- ======================================= -->
+	<dependency>
+		<groupId>org.apache.commons</groupId>
+		<artifactId>commons-pool2</artifactId>
+		<version>2.0</version>
+		<type>jar</type>
+		<scope>compile</scope>
+	</dependency>
+
+	<!-- ======================================= -->
+	<!-- 日志（Log）框架 -->
+	<!-- ======================================= -->
+	<dependency>
+		<groupId>org.slf4j</groupId>
+		<artifactId>slf4j-api</artifactId>
+		<version>1.7.7</version>
+	</dependency>
+	<dependency>
+		<groupId>ch.qos.logback</groupId>
+		<artifactId>logback-classic</artifactId>
+		<version>1.1.2</version>
+	</dependency>
+
+	<!-- ======================================= -->
+	<!-- 测试（Test）框架 -->
+	<!-- ======================================= -->
+	<dependency>
+		<groupId>junit</groupId>
+		<artifactId>junit</artifactId>
+		<version>4.11</version>
+		<type>jar</type>
+		<scope>test</scope>
+	</dependency>
+</dependencies>
 
 	<distributionManagement>
 		<repository>
