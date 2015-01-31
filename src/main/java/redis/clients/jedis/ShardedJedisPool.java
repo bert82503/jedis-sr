@@ -137,21 +137,22 @@ public class ShardedJedisPool extends Pool<ShardedJedis> {
 		public void destroyObject(PooledObject<ShardedJedis> pooledShardedJedis)
 				throws Exception {
 			final ShardedJedis shardedJedis = pooledShardedJedis.getObject();
-			shardedJedis.disconnect();
-			// for (Jedis jedis : shardedJedis.getAllShards()) {
-			// try {
-			// try {
-			// // 请求服务端关闭连接
-			// jedis.quit();
-			// } catch (Exception e) {
-			// // 忽略
-			// }
-			// // 客户端主动关闭连接
-			// jedis.disconnect();
-			// } catch (Exception e) {
-			//
-			// }
-			// }
+			
+			for (Jedis jedis : shardedJedis.getAllShards()) {
+				try {
+					// 1. 请求服务端关闭连接
+					jedis.quit();
+				} catch (Exception e) {
+					// 忽略异常
+				}
+				
+				try {
+					// 2. 客户端主动关闭连接
+					jedis.disconnect();
+				} catch (Exception e) {
+					// 忽略异常
+				}
+			}
 		}
 
 		/**
